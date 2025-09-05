@@ -46,6 +46,24 @@ body {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.glass-light {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.shadow-glass {
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.shadow-glass-sm {
+  box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.25);
+}
+
+.shadow-glass-lg {
+  box-shadow: 0 16px 64px 0 rgba(31, 38, 135, 0.5);
+}
+
 .glass-hover {
   transition: all 0.3s ease;
 }
@@ -115,6 +133,38 @@ button:disabled {
 
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Slide in animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
 }
 
 /* Line clamp utilities */

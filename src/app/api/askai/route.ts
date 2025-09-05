@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
 import { getCurrentUser } from '@/lib/auth-client';
+import { validateEnvironmentVariables } from '@/lib/env-validation';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Validate environment variables on startup
+const envValidation = validateEnvironmentVariables();
+
+// Initialize Gemini AI only if API key is available
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 // Initialize Supabase client for server-side operations
 const supabaseAdmin = createClient(
@@ -26,6 +30,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
+    // Validate API key and Gemini client
+    if (!genAI || !process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured or invalid');
+      return NextResponse.json({ 
+        error: 'AI service not configured',
+        response: "I'm sorry, the AI service is currently unavailable. Please contact an administrator."
+      }, { status: 500 });
+    }
+
     // For demo purposes, if userId is provided (from component), use it
     // Otherwise, try to get authenticated user, or use a demo user ID
     let actualUserId = userId;
@@ -40,8 +53,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get the generative model
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // Get the generative model with timeout configuration
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-pro',
+      generationConfig: {
+        maxOutputTokens: 1000,
+        temperature: 0.7,
+      }
+    });
 
     // Create a context-aware prompt for the career guidance program
     const contextPrompt = `You are an AI assistant for a Career Guidance Project Website. This is an educational outreach program that visits schools to provide career guidance to students. The program has:
@@ -57,12 +76,18 @@ The website features:
 - Admin panel for content management
 - Statistics dashboard
 
-Please provide helpful, encouraging, and informative responses related to career guidance, education, and the program. Keep responses concise and student-friendly.
+Please provide helpful, encouraging, and informative responses related to career guidance, education, and the program. Keep responses concise and student-friendly (max 200 words).
 
 User question: ${message}`;
 
-    // Generate response from Gemini
-    const result = await model.generateContent(contextPrompt);
+    // Generate response from Gemini with timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
+    });
+
+    const geminiPromise = model.generateContent(contextPrompt);
+    
+    const result = await Promise.race([geminiPromise, timeoutPromise]);
     const response = result.response;
     const aiResponse = response.text();
 
@@ -90,13 +115,28 @@ User question: ${message}`;
   } catch (error) {
     console.error('Error in AI chat:', error);
     
-    // Provide a fallback response
-    const fallbackResponse = "I'm sorry, I'm having trouble processing your request right now. Please try again later or contact an administrator for assistance.";
+    // Provide specific fallback responses based on error type
+    let fallbackResponse = "I'm sorry, I'm having trouble processing your request right now. Please try again later.";
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('timeout') || error.message.includes('Request timeout')) {
+        fallbackResponse = "The AI service is taking longer than expected. Please try asking a shorter question or try again in a moment.";
+        statusCode = 408; // Request Timeout
+      } else if (error.message.includes('API key') || error.message.includes('authentication')) {
+        fallbackResponse = "The AI service is currently unavailable. Please contact an administrator.";
+        statusCode = 503; // Service Unavailable
+      } else if (error.message.includes('quota') || error.message.includes('limit')) {
+        fallbackResponse = "The AI service has reached its usage limit. Please try again later.";
+        statusCode = 429; // Too Many Requests
+      }
+    }
     
     return NextResponse.json({ 
-      error: 'Internal server error',
-      response: fallbackResponse
-    }, { status: 500 });
+      error: 'AI service error',
+      response: fallbackResponse,
+      timestamp: new Date().toISOString()
+    }, { status: statusCode });
   }
 }
 

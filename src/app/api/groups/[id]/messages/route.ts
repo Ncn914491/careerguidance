@@ -22,10 +22,12 @@ export async function GET(
     const { user } = await getCurrentUser()
     
     if (!user) {
+      console.log('No user found in getCurrentUser()')
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const { id: groupId } = await params
+    console.log('Fetching messages for group:', groupId, 'user:', user.id)
 
     // Verify user is a member of the group using admin client
     const { data: membership, error: membershipError } = await supabaseAdmin
@@ -36,7 +38,11 @@ export async function GET(
       .single()
 
     if (membershipError || !membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      console.log('User not a member of group:', membershipError)
+      return NextResponse.json({ 
+        error: 'You need to join this group to view messages',
+        details: membershipError?.message 
+      }, { status: 403 })
     }
 
     // Get messages with sender information using admin client
@@ -91,7 +97,11 @@ export async function POST(
       .single()
 
     if (membershipError || !membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      console.log('User not a member of group for sending message:', membershipError)
+      return NextResponse.json({ 
+        error: 'You need to join this group to send messages',
+        details: membershipError?.message 
+      }, { status: 403 })
     }
 
     // Send the message using admin client

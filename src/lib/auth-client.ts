@@ -223,9 +223,14 @@ export async function createUserProfile(userId: string, email: string, fullName?
       return { success: false, error }
     }
 
-    // Add user to default groups
-    const { addUserToDefaultGroups } = await import('./groups')
-    await addUserToDefaultGroups(userId)
+    // Try to add user to default groups, but don't fail if it doesn't work
+    try {
+      const { addUserToDefaultGroups } = await import('./groups')
+      await addUserToDefaultGroups(userId)
+    } catch (groupError) {
+      console.warn('Could not add user to default groups:', groupError)
+      // Continue anyway - this is not critical for signup
+    }
 
     return { success: true }
   } catch (error) {

@@ -13,8 +13,9 @@ export async function addUserToDefaultGroups(userId: string) {
       .single()
 
     if (groupError || !defaultGroup) {
-      console.error('Default group not found:', groupError)
-      return { success: false, error: 'Default group not found' }
+      console.warn('Default group "General Discussion" not found, skipping auto-join')
+      // Don't fail - just skip adding to default group
+      return { success: true, message: 'No default group found' }
     }
 
     // Add user to the default group
@@ -27,13 +28,14 @@ export async function addUserToDefaultGroups(userId: string) {
 
     if (membershipError) {
       console.error('Error adding user to default group:', membershipError)
-      return { success: false, error: membershipError }
+      // Don't fail signup for this - user can join groups manually
+      return { success: true, message: 'Could not auto-join default group' }
     }
 
     return { success: true }
   } catch (error) {
     console.error('Error in addUserToDefaultGroups:', error)
-    return { success: false, error }
+    return { success: true, message: 'Could not auto-join default group' }
   }
 }
 

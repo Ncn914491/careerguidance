@@ -1,35 +1,29 @@
 'use client';
 
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { 
   HomeIcon, 
   CalendarDaysIcon, 
   UserGroupIcon, 
-  UsersIcon, 
-  AcademicCapIcon, 
   CogIcon,
-  UserPlusIcon,
   ChevronLeftIcon,
-  ChevronRightIcon,
-  Bars3Icon
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 interface NavigationItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
 }
 
 const navigation: NavigationItem[] = [
   { name: 'Home', href: '/', icon: HomeIcon },
-  { name: 'Weeks', href: '/weeks', icon: CalendarDaysIcon },
+  { name: 'Weeks & Visits', href: '/weeks', icon: CalendarDaysIcon },
   { name: 'Groups', href: '/groups', icon: UserGroupIcon },
-  { name: 'Team', href: '/team', icon: UsersIcon },
-  { name: 'Schools', href: '/schools', icon: AcademicCapIcon },
-  { name: 'Request Admin', href: '/request-admin', icon: UserPlusIcon },
-  { name: 'Admin', href: '/admin', icon: CogIcon },
+  { name: 'Admin', href: '/admin', icon: CogIcon, adminOnly: true },
 ];
 
 interface SidebarProps {
@@ -41,18 +35,18 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileToggle }: SidebarProps) {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
+
+  // Filter navigation items based on user role
+  const filteredNavigation = navigation.filter(item => {
+    if (item.adminOnly) {
+      return isAdmin;
+    }
+    return true;
+  });
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={onMobileToggle}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-glass backdrop-blur-md border border-glass shadow-glass text-white hover:bg-glass-dark transition-all duration-300 transform hover:scale-110 active:scale-95"
-        aria-label="Toggle mobile menu"
-      >
-        <Bars3Icon className="w-6 h-6" />
-      </button>
-
       {/* Sidebar */}
       <div
         className={`
@@ -85,7 +79,7 @@ export default function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileT
       {/* Navigation */}
       <nav className="mt-4 px-2">
         <ul className="space-y-2">
-          {navigation.map((item) => {
+          {filteredNavigation.map((item) => {
             const isActive = pathname === item.href;
             return (
               <li key={item.name}>

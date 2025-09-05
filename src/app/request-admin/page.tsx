@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth';
 export default function RequestAdminPage() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isPendingAdmin, setIsPendingAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -15,9 +16,10 @@ export default function RequestAdminPage() {
 
   const checkUserStatus = async () => {
     try {
-      const { user: currentUser, isAdmin: adminStatus } = await getCurrentUser();
+      const { user: currentUser, isAdmin: adminStatus, isPendingAdmin: pendingStatus } = await getCurrentUser();
       setUser(currentUser);
       setIsAdmin(adminStatus);
+      setIsPendingAdmin(pendingStatus || false);
     } catch (error) {
       console.error('Error checking user status:', error);
     } finally {
@@ -71,6 +73,30 @@ export default function RequestAdminPage() {
           >
             Go to Admin Panel
           </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPendingAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-glass backdrop-blur-md rounded-xl p-8 border border-glass shadow-glass text-center animate-fade-in">
+          <div className="text-yellow-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Admin Request Pending</h1>
+          <p className="text-gray-300 mb-6">Your admin request is currently being reviewed. You'll be notified once it's processed.</p>
+          <div className="flex gap-4 justify-center">
+            <a 
+              href="/student" 
+              className="inline-block px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-glass hover:shadow-glass-lg"
+            >
+              Back to Dashboard
+            </a>
+          </div>
         </div>
       </div>
     );

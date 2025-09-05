@@ -67,15 +67,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update request' }, { status: 500 })
     }
 
-    // If approved, update the user's role to admin
+    // Update user role based on action
     if (action === 'approve') {
+      // Approve: pending_admin -> admin
       const { error: roleUpdateError } = await supabaseAdmin
         .from('profiles')
         .update({ role: 'admin' })
         .eq('id', adminRequest.user_id)
 
       if (roleUpdateError) {
-        console.error('Error updating user role:', roleUpdateError)
+        console.error('Error updating user role to admin:', roleUpdateError)
         // Revert the request status if role update fails
         await supabaseAdmin
           .from('admin_requests')
@@ -87,6 +88,17 @@ export async function PATCH(
           .eq('id', requestId)
         
         return NextResponse.json({ error: 'Failed to update user role' }, { status: 500 })
+      }
+    } else if (action === 'deny') {
+      // Deny: pending_admin -> student
+      const { error: roleUpdateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ role: 'student' })
+        .eq('id', adminRequest.user_id)
+
+      if (roleUpdateError) {
+        console.error('Error reverting user role to student:', roleUpdateError)
+        // Don't fail the denial, but log the error
       }
     }
 

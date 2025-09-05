@@ -9,7 +9,7 @@ CREATE TABLE profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  role TEXT DEFAULT 'student' CHECK (role IN ('student', 'admin')),
+  role TEXT DEFAULT 'student' CHECK (role IN ('student', 'admin', 'pending_admin')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -120,6 +120,8 @@ ALTER TABLE admin_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+-- Allow the trigger function to insert profiles
+CREATE POLICY "System can insert profiles" ON profiles FOR INSERT WITH CHECK (true);
 
 -- Schools: Everyone can read, only admins can create/update
 CREATE POLICY "Schools are viewable by everyone" ON schools FOR SELECT USING (true);

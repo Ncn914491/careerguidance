@@ -129,6 +129,7 @@ export async function authenticateUser(email: string, password: string) {
       success: true,
       user: data.user,
       isAdmin: profile?.role === 'admin',
+      isPendingAdmin: profile?.role === 'pending_admin',
       bypassUsed: false
     }
   } catch (error) {
@@ -145,7 +146,7 @@ export async function getCurrentUser() {
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error || !session) {
-      return { user: null, isAdmin: false }
+      return { user: null, isAdmin: false, isPendingAdmin: false }
     }
 
     // Check if this is the seeded admin
@@ -153,6 +154,7 @@ export async function getCurrentUser() {
       return { 
         user: session.user, 
         isAdmin: true,
+        isPendingAdmin: false,
         isSeededAdmin: true
       }
     }
@@ -166,17 +168,18 @@ export async function getCurrentUser() {
 
     if (profileError) {
       console.error('Error fetching user profile:', profileError)
-      return { user: session.user, isAdmin: false }
+      return { user: session.user, isAdmin: false, isPendingAdmin: false }
     }
 
     return {
       user: session.user,
       isAdmin: profile?.role === 'admin',
+      isPendingAdmin: profile?.role === 'pending_admin',
       isSeededAdmin: false
     }
   } catch (error) {
     console.error('Error getting current user:', error)
-    return { user: null, isAdmin: false }
+    return { user: null, isAdmin: false, isPendingAdmin: false }
   }
 }
 

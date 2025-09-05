@@ -3,13 +3,17 @@
  * Tests the end-to-end flow from admin upload to user viewing
  */
 
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { NextRequest } from 'next/server';
+import { GET, POST } from '../../src/app/api/weeks/route';
+
 // Mock API functions for testing workflow
 interface MockApiResponse {
   status: number;
   json: () => Promise<any>;
 }
 
-// Mo mockGET = async (): Promise<MockApiResponse> => {
+const mockGET = async (): Promise<MockApiResponse> => {
   return {
     status: 200,
     json: async () => ({ weeks: mockWeeksData })

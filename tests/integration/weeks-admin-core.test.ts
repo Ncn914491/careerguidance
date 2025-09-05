@@ -3,67 +3,7 @@
  * Tests the essential requirements without complex Next.js mocking
  */
 
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { describe } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { describe } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { describe } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { describe } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { describe } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { it } from "node:test";
-
-import { describe } from "node:test";
-
-import { describe } from "node:test";
+import { describe, it, expect } from '@jest/globals';
 
 describe('Weeks and Admin Functionality - Core Tests', () => {
   describe('Weeks API Endpoints and Data Fetching', () => {

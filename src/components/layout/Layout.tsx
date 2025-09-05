@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
+import Navbar from './Navbar';
 import AskAI from '@/components/features/AskAI/AskAI';
 
 interface LayoutProps {
@@ -60,8 +61,11 @@ export default function Layout({ children }: LayoutProps) {
           ml-0
         `}
       >
+        {/* Navbar */}
+        <Navbar onMobileMenuToggle={toggleMobileMenu} />
+        
         {/* Main Content Area */}
-        <main className="min-h-screen p-6 pt-16 lg:pt-6">
+        <main className="min-h-screen p-6 pt-20 lg:pt-20">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

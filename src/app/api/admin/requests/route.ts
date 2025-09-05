@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'You already have a pending admin request' }, { status: 400 })
     }
 
-    // Create new admin request
+    // Create new admin request and update user role to pending_admin
     const { data: newRequest, error } = await supabaseAdmin
       .from('admin_requests')
       .insert({
@@ -97,6 +97,19 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error creating admin request:', error)
       return NextResponse.json({ error: 'Failed to create request' }, { status: 500 })
+    }
+
+    // Update user role to pending_admin (this will be handled by the database trigger)
+    // But we'll also do it explicitly here for immediate consistency
+    const { error: roleError } = await supabaseAdmin
+      .from('profiles')
+      .update({ role: 'pending_admin' })
+      .eq('id', user.id)
+      .eq('role', 'student') // Only update if currently a student
+
+    if (roleError) {
+      console.error('Error updating user role to pending_admin:', roleError)
+      // Don't fail the request creation, as the trigger should handle this
     }
 
     return NextResponse.json({ request: newRequest }, { status: 201 })

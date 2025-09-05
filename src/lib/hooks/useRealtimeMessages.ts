@@ -28,7 +28,17 @@ export function useRealtimeMessages(groupId: string | null) {
       try {
         const response = await fetch(`/api/groups/${groupId}/messages`)
         if (!response.ok) {
-          throw new Error('Failed to fetch messages')
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Messages API error:', response.status, errorData)
+          
+          if (response.status === 401) {
+            setError('Please log in to view messages')
+          } else if (response.status === 403) {
+            setError('You need to join this group to view messages')
+          } else {
+            setError(errorData.error || 'Failed to load messages')
+          }
+          return
         }
         const data = await response.json()
         setMessages(data.messages || [])
