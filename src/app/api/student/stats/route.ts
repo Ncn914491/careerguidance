@@ -21,11 +21,16 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true });
 
     // Get groups joined by user
-    const { count: groupsJoined } = await supabase
-      .from('group_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .catch(() => ({ count: 0 }));
+    let groupsJoined = 0;
+    try {
+      const { count } = await supabase
+        .from('group_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      groupsJoined = count || 0;
+    } catch (error) {
+      groupsJoined = 0;
+    }
 
     // Get total weeks count
     const { count: totalWeeks } = await supabase
@@ -34,11 +39,16 @@ export async function GET(request: NextRequest) {
 
     // Get weeks viewed by user (this would need to be tracked in a separate table)
     // For now, we'll use a placeholder or estimate
-    const { count: weeksViewed } = await supabase
-      .from('user_week_views')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .catch(() => ({ count: 0 }));
+    let weeksViewed = 0;
+    try {
+      const { count } = await supabase
+        .from('user_week_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      weeksViewed = count || 0;
+    } catch (error) {
+      weeksViewed = 0;
+    }
 
     // Get total schools count
     const { count: totalSchools } = await supabase
@@ -46,30 +56,40 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true });
 
     // Get schools explored by user (placeholder)
-    const { count: schoolsExplored } = await supabase
-      .from('user_school_views')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .catch(() => ({ count: 0 }));
+    let schoolsExplored = 0;
+    try {
+      const { count } = await supabase
+        .from('user_school_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      schoolsExplored = count || 0;
+    } catch (error) {
+      schoolsExplored = 0;
+    }
 
     // Get messages posted by user
-    const { count: messagesPosted } = await supabase
-      .from('group_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .catch(() => ({ count: 0 }));
+    let messagesPosted = 0;
+    try {
+      const { count } = await supabase
+        .from('group_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      messagesPosted = count || 0;
+    } catch (error) {
+      messagesPosted = 0;
+    }
 
     // Get active days (placeholder - would need proper tracking)
-    const activeDays = Math.min(30, Math.max(1, (groupsJoined || 0) * 3 + (messagesPosted || 0)));
+    const activeDays = Math.min(30, Math.max(1, groupsJoined * 3 + messagesPosted));
 
     const stats = {
-      groupsJoined: groupsJoined || 0,
+      groupsJoined,
       totalGroups: totalGroups || 0,
-      weeksViewed: weeksViewed || 0,
+      weeksViewed,
       totalWeeks: totalWeeks || 0,
-      schoolsExplored: schoolsExplored || 0,
+      schoolsExplored,
       totalSchools: totalSchools || 0,
-      messagesPosted: messagesPosted || 0,
+      messagesPosted,
       activeDays
     };
 

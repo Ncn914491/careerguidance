@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session.user);
           
           // Ensure profile exists when user signs in or signs up
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_UP') {
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             try {
               const { ensureProfileExists } = await import('@/lib/profile-utils');
               await ensureProfileExists(session.user);

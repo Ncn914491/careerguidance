@@ -101,11 +101,14 @@ export async function DELETE(
       .eq('group_id', groupId);
 
     // Delete group messages (if they exist)
-    await supabaseAdmin
-      .from('group_messages')
-      .delete()
-      .eq('group_id', groupId)
-      .catch(() => {}); // Ignore if table doesn't exist
+    try {
+      await supabaseAdmin
+        .from('group_messages')
+        .delete()
+        .eq('group_id', groupId);
+    } catch (error) {
+      // Ignore if table doesn't exist
+    }
 
     // Delete the group
     const { error: deleteError } = await supabaseAdmin

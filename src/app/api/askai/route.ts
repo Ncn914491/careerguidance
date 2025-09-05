@@ -87,7 +87,7 @@ User question: ${message}`;
 
     const geminiPromise = model.generateContent(contextPrompt);
     
-    const result = await Promise.race([geminiPromise, timeoutPromise]);
+    const result = await Promise.race([geminiPromise, timeoutPromise]) as any;
     const response = result.response;
     const aiResponse = response.text();
 

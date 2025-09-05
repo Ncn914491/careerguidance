@@ -40,16 +40,26 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true });
 
     // Get total visits count (assuming this is tracked somewhere)
-    const { count: totalVisits } = await supabase
-      .from('school_visits')
-      .select('*', { count: 'exact', head: true })
-      .catch(() => ({ count: 0 })); // Fallback if table doesn't exist
+    let totalVisits = 0;
+    try {
+      const { count } = await supabase
+        .from('school_visits')
+        .select('*', { count: 'exact', head: true });
+      totalVisits = count || 0;
+    } catch (error) {
+      totalVisits = 0; // Fallback if table doesn't exist
+    }
 
     // Get students in groups count
-    const { count: studentsInGroups } = await supabase
-      .from('group_members')
-      .select('user_id', { count: 'exact', head: true })
-      .catch(() => ({ count: 0 })); // Fallback if table doesn't exist
+    let studentsInGroups = 0;
+    try {
+      const { count } = await supabase
+        .from('group_members')
+        .select('user_id', { count: 'exact', head: true });
+      studentsInGroups = count || 0;
+    } catch (error) {
+      studentsInGroups = 0; // Fallback if table doesn't exist
+    }
 
     const stats = {
       totalUsers: totalUsers || 0,
@@ -58,8 +68,8 @@ export async function GET(request: NextRequest) {
       totalGroups: totalGroups || 0,
       totalSchools: totalSchools || 0,
       totalWeeks: totalWeeks || 0,
-      totalVisits: totalVisits || 0,
-      studentsInGroups: studentsInGroups || 0
+      totalVisits: totalVisits,
+      studentsInGroups: studentsInGroups
     };
 
     return NextResponse.json(stats);
