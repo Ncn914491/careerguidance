@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, lazy } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -11,9 +11,12 @@ import {
   HomeIcon,
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
-import { ViewGroups } from './ViewGroups';
-import { ViewWeeksData } from './ViewWeeksData';
-import { StudentStats } from './StudentStats';
+import { LazyWrapper } from '@/components/ui/LazyWrapper';
+
+// Lazy load heavy components
+const ViewGroups = lazy(() => import('./ViewGroups').then(m => ({ default: m.ViewGroups })));
+const ViewWeeksData = lazy(() => import('./ViewWeeksData').then(m => ({ default: m.ViewWeeksData })));
+const StudentStats = lazy(() => import('./StudentStats').then(m => ({ default: m.StudentStats })));
 
 type TabType = 'overview' | 'groups' | 'weeks' | 'stats';
 
@@ -31,7 +34,7 @@ export function StudentDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-2 border-purple-500/30 border-t-purple-500"></div>
       </div>
     );
   }
@@ -50,11 +53,23 @@ export function StudentDashboard() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'groups':
-        return <ViewGroups />;
+        return (
+          <LazyWrapper>
+            <ViewGroups />
+          </LazyWrapper>
+        );
       case 'weeks':
-        return <ViewWeeksData />;
+        return (
+          <LazyWrapper>
+            <ViewWeeksData />
+          </LazyWrapper>
+        );
       case 'stats':
-        return <StudentStats />;
+        return (
+          <LazyWrapper>
+            <StudentStats />
+          </LazyWrapper>
+        );
       default:
         return (
           <div className="space-y-8">

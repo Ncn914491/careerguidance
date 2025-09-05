@@ -108,11 +108,23 @@ export default function AskAI() {
 
         setMessages(prev => [...prev, aiChatMessage]);
       } else {
-        // Handle error response
+        // Handle specific error responses
+        let errorResponse = 'AI temporarily unavailable. Please try again later.';
+        
+        if (response.status === 408) {
+          errorResponse = 'Request timed out. Please try a shorter question.';
+        } else if (response.status === 429) {
+          errorResponse = 'AI service is busy. Please wait a moment and try again.';
+        } else if (response.status === 503) {
+          errorResponse = 'AI temporarily unavailable. Please try again later.';
+        } else if (data.response) {
+          errorResponse = data.response;
+        }
+
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           message: userMessage,
-          response: data.response || 'Sorry, I encountered an error. Please try again.',
+          response: errorResponse,
           timestamp: new Date().toISOString(),
           isUser: false
         };
@@ -122,11 +134,22 @@ export default function AskAI() {
     } catch (error) {
       console.error('Error sending message:', error);
       
+      // Determine error type and provide appropriate message
+      let errorResponse = 'AI temporarily unavailable. Please check your connection and try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('fetch') || error.message.includes('network')) {
+          errorResponse = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('timeout')) {
+          errorResponse = 'Request timed out. Please try again with a shorter question.';
+        }
+      }
+      
       // Add error message to chat
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         message: userMessage,
-        response: 'Sorry, I\'m having trouble connecting right now. Please try again later.',
+        response: errorResponse,
         timestamp: new Date().toISOString(),
         isUser: false
       };
@@ -279,6 +302,66 @@ export default function AskAI() {
                     Welcome! I&apos;m here to help you with questions about the career guidance program. 
                     Start a conversation below.
                   </p>
+                  
+                  {/* Test Connection Button */}
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={async () => {
+                        setIsLoading(true);
+                        try {
+                          const response = await fetch('/api/test-gemini');
+                          const data = await response.json();
+                          
+                          const testMessage: ChatMessage = {
+                            id: Date.now().toString(),
+                            message: 'Test AI Connection',
+                            response: data.success 
+                              ? `✅ ${data.response}` 
+                              : `❌ ${data.error}`,
+                            timestamp: new Date().toISOString(),
+                            isUser: false
+                          };
+                          
+                          setMessages([testMessage]);
+                        } catch (error) {
+                          const errorMessage: ChatMessage = {
+                            id: Date.now().toString(),
+                            message: 'Test AI Connection',
+                            response: '❌ Failed to test AI connection',
+                            timestamp: new Date().toISOString(),
+                            isUser: false
+                          };
+                          setMessages([errorMessage]);
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      disabled={isLoading}
+                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2 rounded-lg transition-all duration-200 disabled:opacity-50"
+                    >
+                      Test AI Connection
+                    </button>
+                    
+                    {/* Quick Start Prompts */}
+                    <div className="text-left">
+                      <p className="text-sm text-gray-400 mb-2">Try asking:</p>
+                      <div className="space-y-1">
+                        {[
+                          "What career opportunities are available?",
+                          "How do I prepare for interviews?",
+                          "Tell me about the program"
+                        ].map((prompt, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setInputMessage(prompt)}
+                            className="block w-full text-left text-xs text-purple-300 hover:text-purple-200 bg-glass-dark hover:bg-glass rounded px-2 py-1 transition-colors"
+                          >
+                            "{prompt}"
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="p-4 space-y-4">

@@ -29,21 +29,9 @@ export function LoginPage() {
         // Handle login
         const result = await signIn(formData.email, formData.password);
         
-        if (result.success) {
-          // Get user profile to determine role
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('email', formData.email)
-            .single();
-
-          // Redirect based on role
-          if (profile?.role === 'admin') {
-            router.push('/admin/dashboard');
-          } else {
-            router.push('/student/dashboard');
-          }
-        } else {
+        if (result.success && result.redirectTo) {
+          router.push(result.redirectTo);
+        } else if (!result.success) {
           // Handle specific error cases
           const errorMessage = result.error?.message || 'Login failed';
           
@@ -59,21 +47,9 @@ export function LoginPage() {
         // Handle signup
         const result = await signUp(formData.email, formData.password, formData.name);
         
-        if (result.success) {
-          // No email confirmation needed, redirect directly
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('email', formData.email)
-            .single();
-
-          // Redirect based on role
-          if (profile?.role === 'admin') {
-            router.push('/admin/dashboard');
-          } else {
-            router.push('/student/dashboard');
-          }
-        } else {
+        if (result.success && result.redirectTo) {
+          router.push(result.redirectTo);
+        } else if (!result.success) {
           const errorMessage = result.error?.message || 'Signup failed';
           console.error('Signup error details:', result.error);
           setError(errorMessage);

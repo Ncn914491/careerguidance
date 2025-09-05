@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getCurrentUser, requireAdmin } from '@/lib/auth'
+import { getCurrentUserServer, requireAdminServer } from '@/lib/auth-server'
 
 // Use admin client to bypass RLS issues temporarily
 const supabaseAdmin = createClient(
@@ -14,11 +14,18 @@ const supabaseAdmin = createClient(
   }
 )
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get current user to check membership
-    const { user } = await getCurrentUser();
-    const userId = user?.id;
+    // Get current user session from cookies (optional for viewing groups)
+    let userId: string | undefined;
+    try {
+      const { user } = await getCurrentUserServer(request);
+      userId = user?.id;
+    } catch (authError) {
+      // Allow viewing groups even without authentication
+      console.log('No authentication for groups view, continuing without user context');
+      userId = undefined;
+    }
 
     // Get groups with member count and user membership status
     const { data: groups, error } = await supabaseAdmin
@@ -79,7 +86,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Require admin access for creating groups
-    const { user } = await requireAdmin();
+    const { user } = await requireAdminServer(request);
     
     const { name, description } = await request.json()
 

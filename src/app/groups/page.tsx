@@ -54,7 +54,7 @@ export default function GroupsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-[500px] sm:h-[600px] animate-slide-in">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 h-[calc(100vh-12rem)] animate-slide-in">
         {/* Groups List */}
         <div className="lg:col-span-1">
           <GroupList
@@ -66,22 +66,26 @@ export default function GroupsPage() {
         </div>
 
         {/* Chat Area */}
-        <div className="lg:col-span-2 flex flex-col space-y-4">
+        <div className="lg:col-span-2 flex flex-col h-full">
           {selectedGroupId ? (
-            <>
+            <div className="flex flex-col h-full space-y-4">
               {/* Messages */}
-              <MessageList
-                messages={messages}
-                loading={messagesLoading}
-                currentUserId={currentUserId}
-              />
+              <div className="flex-1 min-h-0">
+                <MessageList
+                  messages={messages}
+                  loading={messagesLoading}
+                  currentUserId={currentUserId}
+                />
+              </div>
 
               {/* Message Input */}
-              <MessageInput
-                onSendMessage={handleSendMessage}
-                disabled={!currentUserId}
-              />
-            </>
+              <div className="flex-shrink-0">
+                <MessageInput
+                  onSendMessage={handleSendMessage}
+                  disabled={!currentUserId}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex-1 bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass">
               <div className="flex items-center justify-center h-full">

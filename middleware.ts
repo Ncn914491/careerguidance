@@ -51,7 +51,7 @@ export async function middleware(req: NextRequest) {
     
     let isAdmin = isSeededAdmin;
     
-    // If not seeded admin, check role from database
+    // If not seeded admin, check role from database with caching
     if (!isSeededAdmin) {
       try {
         const { data: profile } = await supabase

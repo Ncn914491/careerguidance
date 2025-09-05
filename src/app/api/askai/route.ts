@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
-import { getCurrentUser } from '@/lib/auth-client';
+import { getCurrentUserServer } from '@/lib/auth-server';
 import { validateEnvironmentVariables } from '@/lib/env-validation';
 
 // Validate environment variables on startup
@@ -35,20 +35,24 @@ export async function POST(request: NextRequest) {
       console.error('GEMINI_API_KEY not configured or invalid');
       return NextResponse.json({ 
         error: 'AI service not configured',
-        response: "I'm sorry, the AI service is currently unavailable. Please contact an administrator."
-      }, { status: 500 });
+        response: "AI temporarily unavailable. Please try again later or contact support."
+      }, { status: 503 });
     }
 
-    // For demo purposes, if userId is provided (from component), use it
-    // Otherwise, try to get authenticated user, or use a demo user ID
+    // Get authenticated user or use provided userId for demo
     let actualUserId = userId;
     
     if (!actualUserId) {
-      const { user } = await getCurrentUser();
-      if (user) {
-        actualUserId = user.id;
-      } else {
-        // For demo purposes, use a temporary user ID if no authentication
+      try {
+        const { user } = await getCurrentUserServer(request);
+        if (user) {
+          actualUserId = user.id;
+        } else {
+          // For demo purposes, use a temporary user ID if no authentication
+          actualUserId = 'demo-user-' + Math.random().toString(36).substr(2, 9);
+        }
+      } catch (authError) {
+        console.warn('Auth check failed, using demo user:', authError);
         actualUserId = 'demo-user-' + Math.random().toString(36).substr(2, 9);
       }
     }
@@ -81,15 +85,32 @@ Please provide helpful, encouraging, and informative responses related to career
 User question: ${message}`;
 
     // Generate response from Gemini with timeout
+    console.log('Sending request to Gemini API...');
+    
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
+      setTimeout(() => reject(new Error('Request timeout after 20 seconds')), 20000);
     });
 
     const geminiPromise = model.generateContent(contextPrompt);
     
     const result = await Promise.race([geminiPromise, timeoutPromise]) as any;
+    
+    console.log('Received response from Gemini API');
+    
+    if (!result || !result.response) {
+      console.error('Invalid response structure:', result);
+      throw new Error('Invalid response from Gemini API');
+    }
+    
     const response = result.response;
     const aiResponse = response.text();
+    
+    if (!aiResponse || aiResponse.trim().length === 0) {
+      console.error('Empty response text from Gemini');
+      throw new Error('Empty response from Gemini API');
+    }
+    
+    console.log('Successfully processed Gemini response');
 
     // Store the chat in the database with 30-day auto-expiry
     const { error: dbError } = await supabaseAdmin
@@ -121,14 +142,20 @@ User question: ${message}`;
     
     if (error instanceof Error) {
       if (error.message.includes('timeout') || error.message.includes('Request timeout')) {
-        fallbackResponse = "The AI service is taking longer than expected. Please try asking a shorter question or try again in a moment.";
+        fallbackResponse = "AI temporarily unavailable - request timed out. Please try a shorter question.";
         statusCode = 408; // Request Timeout
       } else if (error.message.includes('API key') || error.message.includes('authentication')) {
-        fallbackResponse = "The AI service is currently unavailable. Please contact an administrator.";
+        fallbackResponse = "AI temporarily unavailable - service configuration issue.";
         statusCode = 503; // Service Unavailable
-      } else if (error.message.includes('quota') || error.message.includes('limit')) {
-        fallbackResponse = "The AI service has reached its usage limit. Please try again later.";
+      } else if (error.message.includes('quota') || error.message.includes('limit') || error.message.includes('rate')) {
+        fallbackResponse = "AI temporarily unavailable - service limit reached. Please try again later.";
         statusCode = 429; // Too Many Requests
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        fallbackResponse = "AI temporarily unavailable - network issue. Please check your connection.";
+        statusCode = 503; // Service Unavailable
+      } else if (error.message.includes('Empty response') || error.message.includes('Invalid response')) {
+        fallbackResponse = "AI temporarily unavailable - received invalid response. Please try again.";
+        statusCode = 502; // Bad Gateway
       }
     }
     
@@ -140,9 +167,9 @@ User question: ${message}`;
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { user } = await getCurrentUser();
+    const { user } = await getCurrentUserServer(request);
     
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });

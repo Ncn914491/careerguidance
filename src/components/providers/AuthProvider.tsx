@@ -1,17 +1,21 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useCallback } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { ADMIN_CREDENTIALS, isSeededAdmin } from '@/lib/auth-client';
+import { useAuthStore } from '@/store/authStore';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAdmin: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: any; needsEmailConfirmation?: boolean; user?: User }>;
+  isInitialized: boolean;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: any; redirectTo?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: any; needsEmailConfirmation?: boolean; user?: User; redirectTo?: string }>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,11 +29,21 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    user,
+    session,
+    isAdmin,
+    isLoading,
+    isInitialized,
+    setUser,
+    setSession,
+    setIsAdmin,
+    setIsLoading,
+    setIsInitialized,
+    updateActivity
+  } = useAuthStore();
 
-  const checkUserRole = async (userId: string, email: string) => {
+  const checkUserRole = useCallback(async (userId: string, email: string) => {
     if (isSeededAdmin(email)) {
       setIsAdmin(true);
       return true;
@@ -50,58 +64,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       return false;
     }
-  };
+  }, []);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+      
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        await checkUserRole(session.user.id, session.user.email || '');
+      }
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+    }
+  }, [checkUserRole]);
 
   useEffect(() => {
+    let mounted = true;
+
     // Check for existing session
-    const checkSession = async () => {
+    const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (session?.user) {
+        if (!mounted) return;
+
+        if (error) {
+          console.error('Error getting session:', error);
+        } else if (session?.user) {
+          setSession(session);
           setUser(session.user);
           await checkUserRole(session.user.id, session.user.email || '');
         }
       } catch (error) {
-        console.error('Error checking session:', error);
+        console.error('Error initializing auth:', error);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+          setIsInitialized(true);
+        }
       }
     };
 
-    checkSession();
+    initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes with optimized handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+
+        console.log('Auth state change:', event, !!session);
+
+        // Update session and user immediately for instant UI updates
+        setSession(session);
+        setUser(session?.user || null);
+
         if (session?.user) {
-          setUser(session.user);
-          
-          // Ensure profile exists when user signs in or signs up
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Ensure profile exists for new signups and sign-ins
+          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
             try {
               const { ensureProfileExists } = await import('@/lib/profile-utils');
               await ensureProfileExists(session.user);
             } catch (error) {
               console.warn('Could not ensure profile exists:', error);
-              // Don't fail the auth process if profile creation fails
             }
           }
           
+          // Check role after profile operations
           await checkUserRole(session.user.id, session.user.email || '');
         } else {
-          setUser(null);
           setIsAdmin(false);
         }
-        setIsLoading(false);
+
+        // Only set loading to false after initialization
+        if (isInitialized) {
+          setIsLoading(false);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [checkUserRole, isInitialized]);
 
   const signIn = async (email: string, password: string) => {
     try {
+      setIsLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -111,16 +164,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error };
       }
 
-      setUser(data.user);
-      await checkUserRole(data.user.id, email);
-      return { success: true };
+      // Session will be updated via onAuthStateChange
+      // Determine redirect path based on role
+      const isAdminUser = isSeededAdmin(email);
+      let redirectTo = '/student/dashboard';
+      
+      if (isAdminUser) {
+        redirectTo = '/admin/dashboard';
+      } else {
+        // Check role from database for non-seeded users
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
+          
+          if (profile?.role === 'admin') {
+            redirectTo = '/admin/dashboard';
+          }
+        } catch (error) {
+          console.warn('Could not check user role:', error);
+        }
+      }
+
+      return { success: true, redirectTo };
     } catch (error) {
       return { success: false, error };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
+      setIsLoading(true);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -128,7 +207,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName
           }
-          // Remove emailRedirectTo to disable email confirmation
         }
       });
 
@@ -137,46 +215,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        // Set user immediately since we're not requiring email confirmation
-        setUser(data.user);
-        
-        // Create profile manually if session exists (user is confirmed)
-        if (data.session) {
-          const { ensureProfileExists } = await import('@/lib/profile-utils');
-          await ensureProfileExists(data.user);
-          await checkUserRole(data.user.id, email);
-        }
+        // Session will be updated via onAuthStateChange
+        // New users are always students initially
+        const redirectTo = '/student/dashboard';
         
         return { 
           success: true, 
-          needsEmailConfirmation: false, // Always false now
-          user: data.user 
+          needsEmailConfirmation: false,
+          user: data.user,
+          redirectTo
         };
       }
 
       return { success: false, error: new Error('User creation failed') };
     } catch (error) {
       return { success: false, error };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
+      setIsLoading(true);
       await supabase.auth.signOut();
-      setUser(null);
-      setIsAdmin(false);
+      // State will be updated via onAuthStateChange
     } catch (error) {
       console.error('Sign out error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const value = {
     user,
+    session,
     isAdmin,
     isLoading,
+    isInitialized,
     signIn,
     signUp,
-    signOut
+    signOut,
+    refreshSession
   };
 
   return (

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { UserGroupIcon, ChatBubbleLeftRightIcon, PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useGroups } from '@/hooks/useSupabaseQuery';
 
 interface Group {
   id: string;
@@ -14,30 +15,34 @@ interface Group {
 }
 
 export function ViewGroups() {
-  const { user } = useAuth();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isLoading: authLoading } = useAuth();
+  const { data: groups = [], error, isLoading, mutate } = useGroups();
   const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  useEffect(() => {
-    fetchGroups();
-  }, []);
+  // Don't show error immediately if auth is still loading
+  if (error && !message && !authLoading) {
+    setMessage({ 
+      type: 'error', 
+      text: user ? 'Failed to load groups' : 'Please log in to view groups' 
+    });
+  }
 
-  const fetchGroups = async () => {
-    try {
-      const response = await fetch('/api/groups');
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data.groups || []);
-      }
-    } catch (error) {
-      console.error('Error fetching groups:', error);
-      setMessage({ type: 'error', text: 'Failed to load groups' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Show loading if auth is still loading
+  if (authLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-glass rounded w-1/3 mb-6"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-32 bg-glass rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleJoinGroup = async (groupId: string) => {
     if (!user) return;
@@ -50,7 +55,7 @@ export function ViewGroups() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Successfully joined the group!' });
-        fetchGroups(); // Refresh the groups list
+        mutate(); // Refresh the groups list
       } else {
         const error = await response.json();
         setMessage({ type: 'error', text: error.error || 'Failed to join group' });
@@ -74,7 +79,7 @@ export function ViewGroups() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Successfully left the group' });
-        fetchGroups(); // Refresh the groups list
+        mutate(); // Refresh the groups list
       } else {
         const error = await response.json();
         setMessage({ type: 'error', text: error.error || 'Failed to leave group' });

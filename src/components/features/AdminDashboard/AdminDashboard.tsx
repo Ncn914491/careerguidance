@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, lazy } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -11,10 +11,13 @@ import {
   UserPlusIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline';
-import { UploadWeekData } from './UploadWeekData';
-import { ManageGroups } from './ManageGroups';
-import { AdminStats } from './AdminStats';
-import AdminRequestDashboard from '@/components/AdminRequestDashboard';
+import { LazyWrapper } from '@/components/ui/LazyWrapper';
+
+// Lazy load heavy components
+const UploadWeekData = lazy(() => import('./UploadWeekData').then(m => ({ default: m.UploadWeekData })));
+const ManageGroups = lazy(() => import('./ManageGroups').then(m => ({ default: m.ManageGroups })));
+const AdminStats = lazy(() => import('./AdminStats').then(m => ({ default: m.AdminStats })));
+const AdminRequestDashboard = lazy(() => import('@/components/AdminRequestDashboard'));
 
 type TabType = 'overview' | 'upload' | 'groups' | 'requests' | 'stats';
 
@@ -32,7 +35,7 @@ export function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-2 border-purple-500/30 border-t-purple-500"></div>
       </div>
     );
   }
@@ -52,13 +55,29 @@ export function AdminDashboard() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'upload':
-        return <UploadWeekData />;
+        return (
+          <LazyWrapper>
+            <UploadWeekData />
+          </LazyWrapper>
+        );
       case 'groups':
-        return <ManageGroups />;
+        return (
+          <LazyWrapper>
+            <ManageGroups />
+          </LazyWrapper>
+        );
       case 'requests':
-        return <AdminRequestDashboard />;
+        return (
+          <LazyWrapper>
+            <AdminRequestDashboard />
+          </LazyWrapper>
+        );
       case 'stats':
-        return <AdminStats />;
+        return (
+          <LazyWrapper>
+            <AdminStats />
+          </LazyWrapper>
+        );
       default:
         return (
           <div className="space-y-8">
@@ -94,7 +113,9 @@ export function AdminDashboard() {
               ))}
             </div>
 
-            <AdminStats />
+            <LazyWrapper>
+              <AdminStats />
+            </LazyWrapper>
           </div>
         );
     }
