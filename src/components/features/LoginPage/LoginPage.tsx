@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
@@ -16,8 +16,16 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, isLoading: authLoading, isInitialized, isAdmin } = useAuth();
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isInitialized && !authLoading && user) {
+      const redirectTo = isAdmin ? '/admin/dashboard' : '/student/dashboard';
+      router.push(redirectTo);
+    }
+  }, [user, isAdmin, authLoading, isInitialized, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +38,9 @@ export function LoginPage() {
         const result = await signIn(formData.email, formData.password);
         
         if (result.success && result.redirectTo) {
+          // Don't set loading to false here - let the redirect happen
           router.push(result.redirectTo);
+          return;
         } else if (!result.success) {
           // Handle specific error cases
           const errorMessage = result.error?.message || 'Login failed';
@@ -48,7 +58,9 @@ export function LoginPage() {
         const result = await signUp(formData.email, formData.password, formData.name);
         
         if (result.success && result.redirectTo) {
+          // Don't set loading to false here - let the redirect happen
           router.push(result.redirectTo);
+          return;
         } else if (!result.success) {
           const errorMessage = result.error?.message || 'Signup failed';
           console.error('Signup error details:', result.error);
@@ -68,6 +80,21 @@ export function LoginPage() {
       [e.target.name]: e.target.value
     }));
   };
+
+  // Show loading while auth is initializing or if already authenticated
+  if (!isInitialized || authLoading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">
+        <div className="max-w-md w-full space-y-8">
+          <div className="bg-glass backdrop-blur-md rounded-xl shadow-glass-lg border border-glass p-8">
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4">

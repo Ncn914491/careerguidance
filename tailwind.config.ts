@@ -33,6 +33,8 @@ const config: Config = {
         'fade-in': 'fadeIn 0.3s ease-in-out',
         'slide-in': 'slideIn 0.3s ease-out',
         'glass-shimmer': 'glassShimmer 2s ease-in-out infinite',
+        'bounce-in': 'bounceIn 0.6s ease-out',
+        'spin': 'spin 1s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -46,6 +48,11 @@ const config: Config = {
         glassShimmer: {
           '0%, 100%': { opacity: '0.5' },
           '50%': { opacity: '0.8' },
+        },
+        bounceIn: {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '50%': { transform: 'scale(1.1)', opacity: '0.8' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
         },
       },
     },

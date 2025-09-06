@@ -143,7 +143,13 @@ export async function authenticateUser(email: string, password: string) {
  */
 export async function getCurrentUser() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession()
+    // Add timeout to prevent infinite loading
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('getCurrentUser timeout')), 8000);
+    });
+    
+    const sessionPromise = supabase.auth.getSession();
+    const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
     
     if (error || !session) {
       return { user: null, isAdmin: false, isPendingAdmin: false }
@@ -159,12 +165,18 @@ export async function getCurrentUser() {
       }
     }
 
-    // Get user role from profiles table
-    const { data: profile, error: profileError } = await supabase
+    // Get user role from profiles table with timeout
+    const profilePromise = supabase
       .from('profiles')
       .select('role')
       .eq('id', session.user.id)
-      .single()
+      .single();
+      
+    const profileTimeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+    });
+
+    const { data: profile, error: profileError } = await Promise.race([profilePromise, profileTimeoutPromise]) as any;
 
     if (profileError) {
       console.error('Error fetching user profile:', profileError)

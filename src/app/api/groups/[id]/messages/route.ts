@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getCurrentUser } from '@/lib/auth-client'
+import { getCurrentUserServer } from '@/lib/auth-server'
 
-// Use admin client to bypass RLS issues temporarily
+// Use admin client to bypass RLS issues
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -14,39 +14,34 @@ const supabaseAdmin = createClient(
   }
 )
 
+// GET - Get messages for a group
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { user } = await getCurrentUser()
+    const { user } = await getCurrentUserServer(request)
     
     if (!user) {
-      console.log('No user found in getCurrentUser()')
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const { id: groupId } = await params
-    console.log('Fetching messages for group:', groupId, 'user:', user.id)
+    const groupId = params.id
 
-    // Verify user is a member of the group using admin client
-    const { data: membership, error: membershipError } = await supabaseAdmin
+    // Check if user is a member of the group
+    const { data: membership } = await supabaseAdmin
       .from('group_members')
       .select('id')
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .single()
 
-    if (membershipError || !membership) {
-      console.log('User not a member of group:', membershipError)
-      return NextResponse.json({ 
-        error: 'You need to join this group to view messages',
-        details: membershipError?.message 
-      }, { status: 403 })
+    if (!membership) {
+      return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 })
     }
 
-    // Get messages with sender information using admin client
-    const { data: messages, error } = await supabaseAdmin
+    // Get messages with sender information
+    const { data: messages, error: messagesError } = await supabaseAdmin
       .from('group_messages')
       .select(`
         *,
@@ -57,55 +52,53 @@ export async function GET(
       `)
       .eq('group_id', groupId)
       .order('created_at', { ascending: true })
+      .limit(100) // Limit to last 100 messages
 
-    if (error) {
-      console.error('Error fetching messages:', error)
+    if (messagesError) {
+      console.error('Error fetching messages:', messagesError)
       return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
     }
 
-    return NextResponse.json({ messages })
+    return NextResponse.json({ messages: messages || [] })
   } catch (error) {
-    console.error('Error in messages GET API:', error)
+    console.error('Error in GET /api/groups/[id]/messages:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
+// POST - Send a message to a group
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { user } = await getCurrentUser()
+    const { user } = await getCurrentUserServer(request)
     
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const { id: groupId } = await params
     const { message } = await request.json()
+    const groupId = params.id
 
-    if (!message || message.trim().length === 0) {
+    if (!message || !message.trim()) {
       return NextResponse.json({ error: 'Message content is required' }, { status: 400 })
     }
 
-    // Verify user is a member of the group using admin client
-    const { data: membership, error: membershipError } = await supabaseAdmin
+    // Check if user is a member of the group
+    const { data: membership } = await supabaseAdmin
       .from('group_members')
       .select('id')
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .single()
 
-    if (membershipError || !membership) {
-      console.log('User not a member of group for sending message:', membershipError)
-      return NextResponse.json({ 
-        error: 'You need to join this group to send messages',
-        details: membershipError?.message 
-      }, { status: 403 })
+    if (!membership) {
+      return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 })
     }
 
-    // Send the message using admin client
-    const { data: newMessage, error } = await supabaseAdmin
+    // Send the message
+    const { data: newMessage, error: messageError } = await supabaseAdmin
       .from('group_messages')
       .insert({
         group_id: groupId,
@@ -121,14 +114,14 @@ export async function POST(
       `)
       .single()
 
-    if (error) {
-      console.error('Error sending message:', error)
+    if (messageError) {
+      console.error('Error sending message:', messageError)
       return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
     }
 
     return NextResponse.json({ message: newMessage })
   } catch (error) {
-    console.error('Error in messages POST API:', error)
+    console.error('Error in POST /api/groups/[id]/messages:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

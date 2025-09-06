@@ -29,7 +29,7 @@ const initialState: AuthState = {
   user: null,
   session: null,
   isAdmin: false,
-  isLoading: true,
+  isLoading: false,
   isInitialized: false,
   lastActivity: Date.now(),
 };

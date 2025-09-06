@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthProvider';
 import Modal from '@/components/ui/Modal';
 import FileViewer from '@/components/ui/FileViewer';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface WeekFile {
   id: string;
@@ -23,15 +26,31 @@ interface Week {
 }
 
 export default function WeeksPage() {
+  const router = useRouter();
+  const { user, isAdmin, isLoading: authLoading, isInitialized } = useAuth();
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
+  const [editingWeek, setEditingWeek] = useState<Week | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '' });
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Redirect to login if not authenticated and auth is initialized
+  useEffect(() => {
+    if (isInitialized && !authLoading && !user) {
+      router.push('/login');
+      return;
+    }
+  }, [user, authLoading, isInitialized, router]);
 
   useEffect(() => {
-    fetchWeeks();
-  }, []);
+    if (user) {
+      fetchWeeks();
+    }
+  }, [user]);
 
   const fetchWeeks = async () => {
     try {
@@ -59,6 +78,82 @@ export default function WeeksPage() {
   const closeWeekModal = () => {
     setSelectedWeek(null);
     setSelectedFileIndex(0);
+  };
+
+  const handleEditWeek = (week: Week) => {
+    setEditingWeek(week);
+    setEditForm({
+      title: week.title,
+      description: week.description || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingWeek || !isAdmin) return;
+
+    setIsEditing(true);
+    try {
+      const response = await fetch(`/api/weeks/${editingWeek.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editForm.title,
+          description: editForm.description
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update week');
+      }
+
+      // Update the week in the local state
+      setWeeks(prev => prev.map(week => 
+        week.id === editingWeek.id 
+          ? { ...week, title: editForm.title, description: editForm.description }
+          : week
+      ));
+
+      setEditingWeek(null);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update week');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleDeleteWeek = async (weekId: string) => {
+    if (!isAdmin || !confirm('Are you sure you want to delete this week? This will also delete all associated files and cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(weekId);
+    try {
+      const response = await fetch(`/api/weeks/${weekId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete week');
+      }
+
+      // Remove the week from local state
+      setWeeks(prev => prev.filter(week => week.id !== weekId));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete week');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingWeek(null);
+    setEditForm({ title: '', description: '' });
   };
 
   const getFileTypeIcon = (type: string) => {
@@ -97,6 +192,24 @@ export default function WeeksPage() {
       day: 'numeric'
     });
   };
+
+  // Show loading while auth is initializing
+  if (!isInitialized || authLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if user is not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -160,56 +273,97 @@ export default function WeeksPage() {
           {weeks.map((week) => (
             <div
               key={week.id}
-              className="bg-glass backdrop-blur-md rounded-xl p-4 sm:p-6 border border-glass shadow-glass hover:bg-glass-dark hover:shadow-glass-lg hover:border-blue-400/50 transition-all duration-300 cursor-pointer group transform hover:scale-105 active:scale-95"
-              onClick={() => openWeekModal(week)}
+              className="bg-glass backdrop-blur-md rounded-xl p-4 sm:p-6 border border-glass shadow-glass hover:bg-glass-dark hover:shadow-glass-lg hover:border-blue-400/50 transition-all duration-300 group"
             >
               <div className="flex items-start justify-between mb-4">
-                <div>
+                <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
                     Week {week.week_number}
                   </h3>
                   <p className="text-gray-400 text-sm">{formatDate(week.created_at)}</p>
                 </div>
-                <div className="text-blue-400">
+                
+                {/* Admin Controls */}
+                {isAdmin && (
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditWeek(week);
+                      }}
+                      className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                      title="Edit week"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteWeek(week.id);
+                      }}
+                      disabled={isDeleting === week.id}
+                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete week"
+                    >
+                      {isDeleting === week.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"></div>
+                      ) : (
+                        <TrashIcon className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                )}
+                
+                {/* View Arrow */}
+                <button
+                  onClick={() => openWeekModal(week)}
+                  className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors ml-2"
+                  title="View week"
+                >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                </div>
+                </button>
               </div>
 
-              <h4 className="text-white font-medium mb-2">{week.title}</h4>
-              
-              {week.description && (
-                <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                  {week.description}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4 text-sm text-gray-400">
-                  {week.week_files.filter(f => f.file_type === 'photo').length > 0 && (
-                    <div className="flex items-center space-x-1">
-                      {getFileTypeIcon('photo')}
-                      <span>{week.week_files.filter(f => f.file_type === 'photo').length}</span>
-                    </div>
-                  )}
-                  {week.week_files.filter(f => f.file_type === 'video').length > 0 && (
-                    <div className="flex items-center space-x-1">
-                      {getFileTypeIcon('video')}
-                      <span>{week.week_files.filter(f => f.file_type === 'video').length}</span>
-                    </div>
-                  )}
-                  {week.week_files.filter(f => f.file_type === 'pdf').length > 0 && (
-                    <div className="flex items-center space-x-1">
-                      {getFileTypeIcon('pdf')}
-                      <span>{week.week_files.filter(f => f.file_type === 'pdf').length}</span>
-                    </div>
-                  )}
-                </div>
+              <div 
+                className="cursor-pointer"
+                onClick={() => openWeekModal(week)}
+              >
+                <h4 className="text-white font-medium mb-2">{week.title}</h4>
                 
-                <span className="text-xs text-gray-500">
-                  {week.week_files.length} file{week.week_files.length !== 1 ? 's' : ''}
-                </span>
+                {week.description && (
+                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                    {week.description}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-gray-400">
+                    {week.week_files.filter(f => f.file_type === 'photo').length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        {getFileTypeIcon('photo')}
+                        <span>{week.week_files.filter(f => f.file_type === 'photo').length}</span>
+                      </div>
+                    )}
+                    {week.week_files.filter(f => f.file_type === 'video').length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        {getFileTypeIcon('video')}
+                        <span>{week.week_files.filter(f => f.file_type === 'video').length}</span>
+                      </div>
+                    )}
+                    {week.week_files.filter(f => f.file_type === 'pdf').length > 0 && (
+                      <div className="flex items-center space-x-1">
+                        {getFileTypeIcon('pdf')}
+                        <span>{week.week_files.filter(f => f.file_type === 'pdf').length}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <span className="text-xs text-gray-500">
+                    {week.week_files.length} file{week.week_files.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -301,6 +455,66 @@ export default function WeeksPage() {
                 )}
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit Week Modal */}
+      {editingWeek && (
+        <Modal
+          isOpen={true}
+          onClose={cancelEdit}
+          title={`Edit Week ${editingWeek.week_number}`}
+          size="md"
+        >
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="edit-title" className="block text-sm font-medium text-gray-300 mb-2">
+                Title
+              </label>
+              <input
+                id="edit-title"
+                type="text"
+                value={editForm.title}
+                onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter week title"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="edit-description" className="block text-sm font-medium text-gray-300 mb-2">
+                Description
+              </label>
+              <textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                rows={4}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                placeholder="Enter week description (optional)"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={cancelEdit}
+                disabled={isEditing}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isEditing || !editForm.title.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isEditing && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                )}
+                {isEditing ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}

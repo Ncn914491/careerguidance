@@ -32,10 +32,16 @@ export default function SchoolsPage() {
 
   const fetchData = async () => {
     try {
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      
       const [schoolsResponse, weeksResponse] = await Promise.all([
-        fetch('/api/schools'),
-        fetch('/api/weeks')
+        fetch('/api/schools', { signal: controller.signal }),
+        fetch('/api/weeks', { signal: controller.signal })
       ]);
+
+      clearTimeout(timeoutId)
 
       if (!schoolsResponse.ok || !weeksResponse.ok) {
         throw new Error('Failed to fetch data');
@@ -46,11 +52,13 @@ export default function SchoolsPage() {
         weeksResponse.json()
       ]);
 
-      setSchools(schoolsData);
-      setWeeks(weeksData);
+      setSchools(schoolsData || []);
+      setWeeks(weeksData?.weeks || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load data');
+      setSchools([]);
+      setWeeks([]);
     } finally {
       setIsLoading(false);
     }

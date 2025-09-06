@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { ADMIN_CREDENTIALS, isSeededAdmin } from '@/lib/auth-client';
+import { isSeededAdmin } from '@/lib/auth-client';
 import { useAuthStore } from '@/store/authStore';
 
 interface AuthContextType {
@@ -39,8 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession,
     setIsAdmin,
     setIsLoading,
-    setIsInitialized,
-    updateActivity
+    setIsInitialized
   } = useAuthStore();
 
   const checkUserRole = useCallback(async (userId: string, email: string) => {
@@ -50,11 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
+
+      if (error) {
+        console.error('Error checking user role:', error);
+        setIsAdmin(false);
+        return false;
+      }
 
       const adminStatus = profile?.role === 'admin';
       setIsAdmin(adminStatus);
@@ -64,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       return false;
     }
-  }, []);
+  }, [setIsAdmin]);
 
   const refreshSession = useCallback(async () => {
     try {
@@ -108,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Initialize auth state
     initializeAuth();
 
     // Listen for auth changes with optimized handling
@@ -123,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (session?.user) {
           // Ensure profile exists for new signups and sign-ins
-          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
+          if (event === 'SIGNED_IN') {
             try {
               const { ensureProfileExists } = await import('@/lib/profile-utils');
               await ensureProfileExists(session.user);
@@ -138,9 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(false);
         }
 
-        // Only set loading to false after initialization
-        if (isInitialized) {
+        // Set loading to false after auth state is processed
+        if (mounted) {
           setIsLoading(false);
+          setIsInitialized(true);
         }
       }
     );
@@ -149,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [checkUserRole, isInitialized]);
+  }, [checkUserRole]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -174,13 +181,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Check role from database for non-seeded users
         try {
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', data.user.id)
             .single();
           
-          if (profile?.role === 'admin') {
+          if (!error && profile?.role === 'admin') {
             redirectTo = '/admin/dashboard';
           }
         } catch (error) {

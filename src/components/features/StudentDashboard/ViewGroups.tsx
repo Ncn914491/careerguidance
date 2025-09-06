@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserGroupIcon, ChatBubbleLeftRightIcon, PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGroups } from '@/hooks/useSupabaseQuery';
@@ -15,21 +15,23 @@ interface Group {
 }
 
 export function ViewGroups() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isInitialized } = useAuth();
   const { data: groups = [], error, isLoading, mutate } = useGroups();
   const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Don't show error immediately if auth is still loading
-  if (error && !message && !authLoading) {
-    setMessage({ 
-      type: 'error', 
-      text: user ? 'Failed to load groups' : 'Please log in to view groups' 
-    });
-  }
+  useEffect(() => {
+    if (error && !message && isInitialized && !authLoading) {
+      setMessage({ 
+        type: 'error', 
+        text: user ? 'Failed to load groups' : 'Please log in to view groups' 
+      });
+    }
+  }, [error, message, authLoading, isInitialized, user]);
 
   // Show loading if auth is still loading
-  if (authLoading) {
+  if (!isInitialized || authLoading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
@@ -39,6 +41,18 @@ export function ViewGroups() {
               <div key={i} className="h-32 bg-glass rounded"></div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-glass backdrop-blur-md rounded-xl border border-glass p-8 text-center">
+          <h4 className="text-xl font-semibold text-white mb-2">Authentication Required</h4>
+          <p className="text-gray-300">Please log in to view and join study groups.</p>
         </div>
       </div>
     );

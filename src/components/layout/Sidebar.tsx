@@ -9,7 +9,8 @@ import {
   UserGroupIcon, 
   CogIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 interface NavigationItem {
@@ -23,6 +24,7 @@ const navigation: NavigationItem[] = [
   { name: 'Home', href: '/', icon: HomeIcon },
   { name: 'Weeks & Visits', href: '/weeks', icon: CalendarDaysIcon },
   { name: 'Groups', href: '/groups', icon: UserGroupIcon },
+  { name: 'AI Assistant', href: '/ai-chat', icon: SparklesIcon },
   { name: 'Admin', href: '/admin', icon: CogIcon, adminOnly: true },
 ];
 

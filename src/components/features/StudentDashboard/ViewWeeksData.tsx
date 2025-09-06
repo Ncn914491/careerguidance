@@ -45,9 +45,13 @@ export function ViewWeeksData() {
       if (response.ok) {
         const data = await response.json();
         setWeeks(data.weeks || []);
+      } else {
+        console.error('Failed to fetch weeks:', response.status, response.statusText);
+        setWeeks([]);
       }
     } catch (error) {
       console.error('Error fetching weeks:', error);
+      setWeeks([]);
     } finally {
       setIsLoading(false);
     }

@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { getCurrentUser } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+import { getCurrentUserServer, requireAdminServer } from '@/lib/auth-server';
 
-export async function GET() {
+// Use admin client to bypass RLS issues
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+export async function GET(request: NextRequest) {
   try {
-    const { data: weeks, error } = await supabase
+    // Allow viewing weeks without authentication (public access)
+    const { data: weeks, error } = await supabaseAdmin
       .from('weeks')
       .select(`
         *,
@@ -27,9 +40,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Check if user is admin
-    const { user, isAdmin } = await getCurrentUser();
+    const { user } = await requireAdminServer(request);
     
-    if (!user || !isAdmin) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
     }
 
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if week number already exists
-    const { data: existingWeek } = await supabase
+    const { data: existingWeek } = await supabaseAdmin
       .from('weeks')
       .select('id')
       .eq('week_number', weekNum)
@@ -84,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create week record
-    const { data: week, error: weekError } = await supabase
+    const { data: week, error: weekError } = await supabaseAdmin
       .from('weeks')
       .insert({
         week_number: weekNum,
@@ -112,7 +125,7 @@ export async function POST(request: NextRequest) {
         const fileName = `week-${weekNum}/${timestamp}-${file.name}`;
         
         // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
           .from('week-files')
           .upload(fileName, file);
 
@@ -122,7 +135,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get public URL
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = supabaseAdmin.storage
           .from('week-files')
           .getPublicUrl(fileName);
 
@@ -139,7 +152,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create file record
-        const { data: fileRecord, error: fileError } = await supabase
+        const { data: fileRecord, error: fileError } = await supabaseAdmin
           .from('week_files')
           .insert({
             week_id: week.id,

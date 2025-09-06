@@ -28,10 +28,18 @@ export default function AdminPage() {
 
   const checkAdminStatus = async () => {
     try {
-      const { isAdmin: adminStatus } = await getCurrentUser();
-      setIsAdmin(adminStatus);
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), 10000);
+      });
+      
+      const adminPromise = getCurrentUser();
+      const { isAdmin: adminStatus } = await Promise.race([adminPromise, timeoutPromise]) as any;
+      
+      setIsAdmin(adminStatus || false);
     } catch (error) {
       console.error('Error checking admin status:', error);
+      setIsAdmin(false);
     } finally {
       setIsLoading(false);
     }
