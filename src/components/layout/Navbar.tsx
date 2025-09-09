@@ -15,7 +15,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ onMobileMenuToggle }: NavbarProps) {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -28,7 +28,7 @@ export default function Navbar({ onMobileMenuToggle }: NavbarProps) {
   };
 
   const handleProfile = () => {
-    if (isAdmin) {
+    if (role === 'admin') {
       router.push('/admin/dashboard');
     } else {
       router.push('/student/dashboard');
@@ -63,11 +63,11 @@ export default function Navbar({ onMobileMenuToggle }: NavbarProps) {
                     <span className="text-sm">{user.email}</span>
                   </div>
                   <span className={`px-2 py-1 text-xs rounded-full border ${
-                    isAdmin 
+                    role === 'admin'
                       ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
                       : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
                   }`}>
-                    {isAdmin ? 'Admin' : 'Student'}
+                    {role === 'admin' ? 'Admin' : 'Student'}
                   </span>
                 </div>
                 

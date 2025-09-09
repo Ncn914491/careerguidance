@@ -18,9 +18,10 @@ interface Group {
 interface GroupChatAreaProps {
   group: Group | null
   currentUserId?: string
+  isAdmin?: boolean
 }
 
-export default function GroupChatArea({ group, currentUserId }: GroupChatAreaProps) {
+export default function GroupChatArea({ group, currentUserId, isAdmin = false }: GroupChatAreaProps) {
   const { messages, loading: messagesLoading, error: messagesError, sendMessage } = useRealtimeMessages(group?.id || null)
   const [showInfo, setShowInfo] = useState(false)
 

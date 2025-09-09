@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { PaperAirplaneIcon, SparklesIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { api } from '@/lib/api'
 
 interface ChatMessage {
   id: string
@@ -52,27 +53,16 @@ export default function AIChatPage() {
     try {
       setIsLoadingHistory(true)
       
-      // Add timeout to prevent infinite loading
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      const data = await api.get('/api/ai-chat')
       
-      const response = await fetch('/api/ai-chat', {
-        credentials: 'include',
-        signal: controller.signal
-      })
-      
-      clearTimeout(timeoutId)
-      
-      if (!response.ok) {
-        console.warn('Failed to load chat history:', response.status)
+      if (data.error) {
+        console.warn('Failed to load chat history:', data.error)
         return
       }
 
-      const data = await response.json()
-      
       // Convert chat history to message format
       const chatMessages: ChatMessage[] = []
-      data.chats?.forEach((chat: any) => {
+      data.chats?.forEach((chat: { message: string; response: string; created_at: string }) => {
         chatMessages.push({
           id: `${chat.created_at}-user`,
           message: chat.message,
@@ -121,25 +111,9 @@ export default function AIChatPage() {
     setIsLoading(true)
 
     try {
-      // Add timeout to prevent infinite loading
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
-      
-      const response = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ message: userMessage }),
-        signal: controller.signal
-      })
-      
-      clearTimeout(timeoutId)
+      const data = await api.post('/api/ai-chat', { message: userMessage })
 
-      const data = await response.json()
-
-      if (!response.ok) {
+      if (data.error) {
         throw new Error(data.error || 'Failed to get AI response')
       }
 
@@ -247,9 +221,9 @@ export default function AIChatPage() {
               <div className="mt-6 space-y-2">
                 <p className="text-sm text-gray-400">Try asking:</p>
                 <div className="space-y-1 text-sm text-blue-300">
-                  <p>"What career paths are good for computer science?"</p>
-                  <p>"How do I prepare for a job interview?"</p>
-                  <p>"What skills should I develop for my career?"</p>
+                  <p>&quot;What career paths are good for computer science?&quot;</p>
+                  <p>&quot;How do I prepare for a job interview?&quot;</p>
+                  <p>&quot;What skills should I develop for my career?&quot;</p>
                 </div>
               </div>
             </div>

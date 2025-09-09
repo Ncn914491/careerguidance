@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getCurrentUser } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
+
+import { Database } from '@/lib/database.types'
 
 // Server-side Supabase client with service role for admin operations
-const supabaseAdmin = createClient(
+const supabaseAdmin = createClient<Database>(
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
@@ -17,11 +19,30 @@ const supabaseAdmin = createClient(
 // GET /api/admin/requests - Fetch admin requests
 export async function GET(request: NextRequest) {
   try {
-    const { user, isAdmin } = await getCurrentUser()
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check user role from database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      return NextResponse.json({ error: 'Failed to get user profile' }, { status: 500 });
+    }
+
+    const isAdmin = (profile as any)?.role === 'admin';
 
     // If user is admin, return all requests; if student, return only their requests
     let query = supabaseAdmin
@@ -54,10 +75,16 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/requests - Create new admin request
 export async function POST(request: NextRequest) {
   try {
-    const { user } = await getCurrentUser()
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const { reason } = await request.json()
@@ -90,7 +117,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         reason: reason.trim(),
         status: 'pending'
-      })
+      } as any)
       .select()
       .single()
 
@@ -101,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     // Update user role to pending_admin (this will be handled by the database trigger)
     // But we'll also do it explicitly here for immediate consistency
-    const { error: roleError } = await supabaseAdmin
+    const { error: roleError } = await (supabaseAdmin as any)
       .from('profiles')
       .update({ role: 'pending_admin' })
       .eq('id', user.id)

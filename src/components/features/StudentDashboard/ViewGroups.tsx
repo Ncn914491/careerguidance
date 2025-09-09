@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { UserGroupIcon, ChatBubbleLeftRightIcon, PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGroups } from '@/hooks/useSupabaseQuery';
+import { api } from '@/lib/api';
 
 interface Group {
   id: string;
@@ -63,16 +64,13 @@ export function ViewGroups() {
     
     setJoiningGroup(groupId);
     try {
-      const response = await fetch(`/api/groups/${groupId}/join`, {
-        method: 'POST',
-      });
+      const data = await api.post(`/api/groups/${groupId}/join`, {});
 
-      if (response.ok) {
+      if (data.error) {
+        setMessage({ type: 'error', text: data.error || 'Failed to join group' });
+      } else {
         setMessage({ type: 'success', text: 'Successfully joined the group!' });
         mutate(); // Refresh the groups list
-      } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to join group' });
       }
     } catch (error) {
       console.error('Error joining group:', error);
@@ -87,16 +85,13 @@ export function ViewGroups() {
     
     setJoiningGroup(groupId);
     try {
-      const response = await fetch(`/api/groups/${groupId}/leave`, {
-        method: 'POST',
-      });
+      const data = await api.post(`/api/groups/${groupId}/leave`, {});
 
-      if (response.ok) {
+      if (data.error) {
+        setMessage({ type: 'error', text: data.error || 'Failed to leave group' });
+      } else {
         setMessage({ type: 'success', text: 'Successfully left the group' });
         mutate(); // Refresh the groups list
-      } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to leave group' });
       }
     } catch (error) {
       console.error('Error leaving group:', error);
@@ -126,8 +121,8 @@ export function ViewGroups() {
     );
   }
 
-  const myGroups = groups.filter(group => group.is_member);
-  const availableGroups = groups.filter(group => !group.is_member);
+  const myGroups = groups.filter((group: Group) => group.is_member);
+  const availableGroups = groups.filter((group: Group) => !group.is_member);
 
   return (
     <div className="space-y-8">
@@ -155,7 +150,7 @@ export function ViewGroups() {
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myGroups.map((group) => (
+            {myGroups.map((group: Group) => (
               <div key={group.id} className="bg-glass backdrop-blur-md rounded-xl border border-glass p-6 hover:bg-glass-light transition-all duration-300">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
@@ -212,7 +207,7 @@ export function ViewGroups() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableGroups.map((group) => (
+            {availableGroups.map((group: Group) => (
               <div key={group.id} className="bg-glass backdrop-blur-md rounded-xl border border-glass p-6 hover:bg-glass-light transition-all duration-300">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">

@@ -1,4 +1,5 @@
-import { supabase } from './supabase'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextRequest } from 'next/server'
 
 /**
  * Check if user is the seeded admin
@@ -8,36 +9,29 @@ export function isSeededAdmin(email: string): boolean {
 }
 
 /**
- * Get current user from client-side for API requests
+ * Get current user from server-side request using proper SSR client
  */
-export async function getCurrentUserFromRequest(request: Request) {
+export async function getCurrentUserFromRequest(request: NextRequest) {
   try {
-    // Get the session token from cookies
-    const cookieHeader = request.headers.get('cookie')
-    if (!cookieHeader) {
-      return { user: null, session: null }
-    }
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            // No-op for read-only operations
+          },
+          remove(name: string, options: CookieOptions) {
+            // No-op for read-only operations
+          },
+        },
+      }
+    )
 
-    // Parse cookies to find auth tokens
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=')
-      acc[key] = value
-      return acc
-    }, {} as Record<string, string>)
-
-    // Look for Supabase auth tokens
-    const accessToken = cookies['sb-access-token'] || cookies['supabase-auth-token']
-    const refreshToken = cookies['sb-refresh-token']
-
-    if (!accessToken) {
-      return { user: null, session: null }
-    }
-
-    // Set the session
-    const { data: { session }, error } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken || ''
-    })
+    const { data: { session }, error } = await supabase.auth.getSession()
 
     if (error || !session) {
       return { user: null, session: null }
@@ -46,6 +40,42 @@ export async function getCurrentUserFromRequest(request: Request) {
     return { user: session.user, session }
   } catch (error) {
     console.error('Error getting user from request:', error)
+    return { user: null, session: null }
+  }
+}
+
+/**
+ * Get user from Authorization header (for API routes)
+ */
+export async function getUserFromAuthHeader(authHeader: string | null) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { user: null, session: null }
+  }
+
+  const token = authHeader.split(' ')[1]
+  
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get: () => undefined,
+          set: () => {},
+          remove: () => {},
+        },
+      }
+    )
+
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+
+    if (error || !user) {
+      return { user: null, session: null }
+    }
+
+    return { user, session: null }
+  } catch (error) {
+    console.error('Error getting user from auth header:', error)
     return { user: null, session: null }
   }
 }

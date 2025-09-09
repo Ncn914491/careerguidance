@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useAuth } from '@/components/providers/AuthProvider';
+import { api } from '@/lib/api';
 
 interface ChatMessage {
   id: string;
@@ -17,34 +12,16 @@ interface ChatMessage {
   isUser: boolean;
 }
 
-interface ApiResponse {
-  response: string;
-  timestamp: string;
-  error?: string;
-}
+
 
 export default function AskAI() {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Get user ID on component mount
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      } else {
-        // For demo purposes, create a temporary user ID
-        setUserId('demo-user-' + Math.random().toString(36).substr(2, 9));
-      }
-    };
-    getUser();
-  }, []);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -65,7 +42,7 @@ export default function AskAI() {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !userId || isLoading) return;
+    if (!inputMessage.trim() || isLoading) return;
 
     const userMessage = inputMessage.trim();
     setInputMessage('');
@@ -83,54 +60,36 @@ export default function AskAI() {
     setMessages(prev => [...prev, userChatMessage]);
 
     try {
-      const response = await fetch('/api/askai', {
+      // Use fetch directly instead of api.post to avoid authentication
+      const response = await fetch('/api/ai-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: userMessage,
-          userId: userId
-        }),
+        body: JSON.stringify({ message: userMessage }),
       });
 
-      const data: ApiResponse = await response.json();
-
-      if (response.ok) {
-        // Add AI response to chat
-        const aiChatMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          message: userMessage,
-          response: data.response,
-          timestamp: data.timestamp,
-          isUser: false
-        };
-
-        setMessages(prev => [...prev, aiChatMessage]);
-      } else {
-        // Handle specific error responses
-        let errorResponse = 'AI temporarily unavailable. Please try again later.';
-        
-        if (response.status === 408) {
-          errorResponse = 'Request timed out. Please try a shorter question.';
-        } else if (response.status === 429) {
-          errorResponse = 'AI service is busy. Please wait a moment and try again.';
-        } else if (response.status === 503) {
-          errorResponse = 'AI temporarily unavailable. Please try again later.';
-        } else if (data.response) {
-          errorResponse = data.response;
-        }
-
-        const errorMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          message: userMessage,
-          response: errorResponse,
-          timestamp: new Date().toISOString(),
-          isUser: false
-        };
-
-        setMessages(prev => [...prev, errorMessage]);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get AI response');
       }
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Add AI response to chat
+      const aiChatMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        message: userMessage,
+        response: data.response,
+        timestamp: data.timestamp,
+        isUser: false
+      };
+
+      setMessages(prev => [...prev, aiChatMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -138,10 +97,12 @@ export default function AskAI() {
       let errorResponse = 'AI temporarily unavailable. Please check your connection and try again.';
       
       if (error instanceof Error) {
-        if (error.message.includes('fetch') || error.message.includes('network')) {
-          errorResponse = 'Network error. Please check your internet connection.';
+        if (error.message.includes('Authentication required')) {
+          errorResponse = 'Please log in to use the AI assistant.';
         } else if (error.message.includes('timeout')) {
           errorResponse = 'Request timed out. Please try again with a shorter question.';
+        } else if (error.message.includes('quota') || error.message.includes('limit')) {
+          errorResponse = 'AI service is busy. Please wait a moment and try again.';
         }
       }
       
@@ -244,7 +205,10 @@ export default function AskAI() {
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
                   />
                 </svg>
-                <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
+                  <p className="text-xs text-gray-400">Powered by Gemini 2.5 Flash</p>
+                </div>
               </div>
               
               <div className="flex items-center gap-2">
@@ -303,44 +267,11 @@ export default function AskAI() {
                     Start a conversation below.
                   </p>
                   
-                  {/* Test Connection Button */}
+                  {/* Ready Status */}
                   <div className="flex flex-col gap-3">
-                    <button
-                      onClick={async () => {
-                        setIsLoading(true);
-                        try {
-                          const response = await fetch('/api/test-gemini');
-                          const data = await response.json();
-                          
-                          const testMessage: ChatMessage = {
-                            id: Date.now().toString(),
-                            message: 'Test AI Connection',
-                            response: data.success 
-                              ? `✅ ${data.response}` 
-                              : `❌ ${data.error}`,
-                            timestamp: new Date().toISOString(),
-                            isUser: false
-                          };
-                          
-                          setMessages([testMessage]);
-                        } catch (error) {
-                          const errorMessage: ChatMessage = {
-                            id: Date.now().toString(),
-                            message: 'Test AI Connection',
-                            response: '❌ Failed to test AI connection',
-                            timestamp: new Date().toISOString(),
-                            isUser: false
-                          };
-                          setMessages([errorMessage]);
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
-                      disabled={isLoading}
-                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2 rounded-lg transition-all duration-200 disabled:opacity-50"
-                    >
-                      Test AI Connection
-                    </button>
+                    <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-3 text-center">
+                      <p className="text-green-300 text-sm">✅ Ready to chat! No login required.</p>
+                    </div>
                     
                     {/* Quick Start Prompts */}
                     <div className="text-left">
@@ -356,7 +287,7 @@ export default function AskAI() {
                             onClick={() => setInputMessage(prompt)}
                             className="block w-full text-left text-xs text-purple-300 hover:text-purple-200 bg-glass-dark hover:bg-glass rounded px-2 py-1 transition-colors"
                           >
-                            "{prompt}"
+                            "                            &quot;{prompt}&quot;"
                           </button>
                         ))}
                       </div>
@@ -426,11 +357,11 @@ export default function AskAI() {
                     focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
                     disabled:opacity-50 disabled:cursor-not-allowed
                   "
-                  disabled={isLoading || !userId}
+                  disabled={isLoading}
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={isLoading || !inputMessage.trim() || !userId}
+                  disabled={isLoading || !inputMessage.trim()}
                   className="
                     bg-gradient-to-r from-purple-600 to-blue-600
                     hover:from-purple-700 hover:to-blue-700

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
-import { getCurrentUserServer } from '@/lib/auth-server';
+import { supabase } from '@/lib/supabase';
 
 // Use admin client for database operations
 const supabaseAdmin = createClient(
@@ -17,12 +17,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const { user } = await getCurrentUserServer(request);
-    
-    if (!user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    // AI chat is now publicly accessible - no authentication required
 
     // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_KEY) {
@@ -40,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Initialize Gemini AI with Flash model
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash', // Use stable Gemini 1.5 Flash model
+      model: 'gemini-1.5-flash-002', // Use Gemini 2.5 Flash (latest stable version)
       generationConfig: {
         maxOutputTokens: 2048,
         temperature: 0.7,
@@ -88,7 +83,7 @@ Student's question: ${message.trim()}`;
 
     const geminiPromise = model.generateContent(systemPrompt);
     
-    const result = await Promise.race([geminiPromise, timeoutPromise]) as any;
+    const result = await Promise.race([geminiPromise, timeoutPromise]) as { response: { text: () => string } };
     
     if (!result || !result.response) {
       throw new Error('Invalid response from AI service');
@@ -101,23 +96,8 @@ Student's question: ${message.trim()}`;
       throw new Error('Empty response from AI service');
     }
 
-    // Save chat to database with auto-expiry (30 days)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    const { error: saveError } = await supabaseAdmin
-      .from('ai_chats')
-      .insert({
-        user_id: user.id,
-        message: message.trim(),
-        response: aiResponse,
-        expires_at: expiresAt.toISOString()
-      });
-
-    if (saveError) {
-      console.error('Error saving chat:', saveError);
-      // Don't fail the request if saving fails
-    }
+    // Skip saving to database since no authentication is required
+    // Chat history is not persisted for anonymous users
 
     return NextResponse.json({
       response: aiResponse,
@@ -150,10 +130,16 @@ Student's question: ${message.trim()}`;
 // GET endpoint to retrieve chat history
 export async function GET(request: NextRequest) {
   try {
-    const { user } = await getCurrentUserServer(request);
-    
-    if (!user) {
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     // Get recent chat history (last 50 messages, not expired)

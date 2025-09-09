@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { PlusIcon, UserGroupIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, UserGroupIcon, CheckIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { api } from '@/lib/api'
 
 interface Group {
   id: string
@@ -20,6 +21,7 @@ interface GroupsSidebarProps {
   onCreateGroup: (name: string, description: string) => void
   loading: boolean
   currentUserId?: string
+  isAdmin?: boolean
 }
 
 export default function GroupsSidebar({
@@ -29,12 +31,15 @@ export default function GroupsSidebar({
   onJoinGroup,
   onCreateGroup,
   loading,
-  currentUserId
+  currentUserId,
+  isAdmin = false
 }: GroupsSidebarProps) {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDescription, setNewGroupDescription] = useState('')
   const [creating, setCreating] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const joinedGroups = groups.filter(g => g.is_member)
   const availableGroups = groups.filter(g => !g.is_member)
@@ -43,15 +48,65 @@ export default function GroupsSidebar({
     if (!newGroupName.trim() || creating) return
 
     setCreating(true)
-    await onCreateGroup(newGroupName.trim(), newGroupDescription.trim())
-    setNewGroupName('')
-    setNewGroupDescription('')
-    setShowCreateForm(false)
-    setCreating(false)
+    try {
+      if (editingGroup) {
+        // Update existing group
+        const data = await api.put(`/api/groups/${editingGroup.id}`, {
+          name: newGroupName.trim(),
+          description: newGroupDescription.trim()
+        })
+        
+        if (data.error) {
+          setMessage({ type: 'error', text: data.error })
+        } else {
+          setMessage({ type: 'success', text: 'Group updated successfully' })
+          // Refresh the page to get updated data
+          window.location.reload()
+        }
+      } else {
+        // Create new group
+        await onCreateGroup(newGroupName.trim(), newGroupDescription.trim())
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save group' })
+    } finally {
+      setNewGroupName('')
+      setNewGroupDescription('')
+      setShowCreateForm(false)
+      setEditingGroup(null)
+      setCreating(false)
+    }
   }
 
   const handleJoinGroup = async (groupId: string) => {
     await onJoinGroup(groupId)
+  }
+
+  const handleEditGroup = (group: Group) => {
+    setEditingGroup(group)
+    setNewGroupName(group.name)
+    setNewGroupDescription(group.description)
+    setShowCreateForm(true)
+  }
+
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const data = await api.delete(`/api/groups/${groupId}`)
+      
+      if (data.error) {
+        setMessage({ type: 'error', text: data.error })
+      } else {
+        setMessage({ type: 'success', text: 'Group deleted successfully' })
+        // Refresh the page to get updated data
+        window.location.reload()
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete group' })
+    }
   }
 
   if (loading) {
@@ -78,21 +133,36 @@ export default function GroupsSidebar({
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <UserGroupIcon className="w-5 h-5" />
-            Groups
+            Groups {isAdmin && <span className="text-xs bg-blue-600 px-2 py-1 rounded">Admin</span>}
           </h2>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="p-2 hover:bg-glass-light rounded-lg transition-colors"
-            title="Create Group"
-          >
-            <PlusIcon className="w-5 h-5 text-white" />
-          </button>
+          {(isAdmin || !isAdmin) && (
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="p-2 hover:bg-glass-light rounded-lg transition-colors"
+              title={isAdmin ? "Create/Manage Group" : "Create Group"}
+            >
+              <PlusIcon className="w-5 h-5 text-white" />
+            </button>
+          )}
         </div>
+        
+        {message && (
+          <div className={`mt-3 p-2 rounded text-xs ${
+            message.type === 'success' 
+              ? 'bg-green-500/20 text-green-300 border border-green-400/50' 
+              : 'bg-red-500/20 text-red-300 border border-red-400/50'
+          }`}>
+            {message.text}
+          </div>
+        )}
       </div>
 
       {/* Create Group Form */}
       {showCreateForm && (
         <div className="p-4 border-b border-glass bg-glass-dark">
+          <h3 className="text-sm font-medium text-white mb-3">
+            {editingGroup ? 'Edit Group' : 'Create New Group'}
+          </h3>
           <div className="space-y-3">
             <input
               type="text"
@@ -116,13 +186,14 @@ export default function GroupsSidebar({
                 disabled={!newGroupName.trim() || creating}
                 className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                {creating ? 'Creating...' : 'Create'}
+                {creating ? (editingGroup ? 'Updating...' : 'Creating...') : (editingGroup ? 'Update' : 'Create')}
               </button>
               <button
                 onClick={() => {
                   setShowCreateForm(false)
                   setNewGroupName('')
                   setNewGroupDescription('')
+                  setEditingGroup(null)
                 }}
                 className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
               >
@@ -167,6 +238,30 @@ export default function GroupsSidebar({
                       <span className="text-xs text-gray-400">
                         {group.member_count}
                       </span>
+                      {isAdmin && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditGroup(group)
+                            }}
+                            className="p-1 hover:bg-blue-600/20 text-blue-400 rounded transition-colors"
+                            title="Edit group"
+                          >
+                            <PencilIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteGroup(group.id)
+                            }}
+                            className="p-1 hover:bg-red-600/20 text-red-400 rounded transition-colors"
+                            title="Delete group"
+                          >
+                            <TrashIcon className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                       <CheckIcon className="w-4 h-4 text-green-400" />
                     </div>
                   </div>
@@ -202,12 +297,32 @@ export default function GroupsSidebar({
                         {group.member_count} members
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleJoinGroup(group.id)}
-                      className="ml-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors"
-                    >
-                      Join
-                    </button>
+                    <div className="flex items-center gap-1 ml-2">
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => handleEditGroup(group)}
+                            className="p-1 hover:bg-blue-600/20 text-blue-400 rounded transition-colors"
+                            title="Edit group"
+                          >
+                            <PencilIcon className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGroup(group.id)}
+                            className="p-1 hover:bg-red-600/20 text-red-400 rounded transition-colors"
+                            title="Delete group"
+                          >
+                            <TrashIcon className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleJoinGroup(group.id)}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors"
+                      >
+                        {isAdmin ? 'Join' : 'Join'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

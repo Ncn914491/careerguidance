@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Modal from '@/components/ui/Modal';
 import FileViewer from '@/components/ui/FileViewer';
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 
 interface WeekFile {
   id: string;
@@ -25,9 +24,230 @@ interface Week {
   week_files: WeekFile[];
 }
 
+
+// Enhanced WeekCard component with slideshow
+interface WeekCardProps {
+  week: Week;
+  isAdmin: boolean;
+  onEdit: (week: Week) => void;
+  onDelete: (weekId: string) => void;
+  isDeleting: boolean;
+}
+
+function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [selectedPdf, setSelectedPdf] = useState<WeekFile | null>(null);
+  
+  const photos = week.week_files.filter(f => f.file_type === 'photo');
+  const pdfs = week.week_files.filter(f => f.file_type === 'pdf');
+  
+  // Auto slideshow functionality
+  useEffect(() => {
+    if (isAutoPlay && photos.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => 
+          prevIndex === photos.length - 1 ? 0 : prevIndex + 1
+        );
+      }, 4000); // Change image every 4 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [isAutoPlay, photos.length]);
+  
+  const nextImage = () => {
+    setCurrentImageIndex(currentImageIndex === photos.length - 1 ? 0 : currentImageIndex + 1);
+  };
+  
+  const prevImage = () => {
+    setCurrentImageIndex(currentImageIndex === 0 ? photos.length - 1 : currentImageIndex - 1);
+  };
+  
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  
+  return (
+    <div className="bg-glass backdrop-blur-md rounded-xl border border-glass shadow-glass overflow-hidden">
+      {/* Week Header */}
+      <div className="p-6 border-b border-glass">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Week {week.week_number}: {week.title}
+            </h2>
+            <p className="text-gray-400 text-sm mb-4">{formatDate(week.created_at)}</p>
+          </div>
+          
+          {/* Admin Controls */}
+          {isAdmin && (
+            <div className="flex items-center gap-2 ml-4">
+              <button
+                onClick={() => onEdit(week)}
+                className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
+                title="Edit week"
+              >
+                <PencilIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onDelete(week.id)}
+                disabled={isDeleting}
+                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
+                title="Delete week"
+              >
+                {isDeleting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"></div>
+                ) : (
+                  <TrashIcon className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Content Area */}
+      <div className="p-6 space-y-6">
+        {/* Photo Slideshow */}
+        {photos.length > 0 && (
+          <div className="relative">
+            <h3 className="text-lg font-semibold text-white mb-4">Photo Gallery</h3>
+            
+            <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
+              <img
+                src={photos[currentImageIndex]?.file_url}
+                alt={photos[currentImageIndex]?.file_name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCI+SW1hZ2UgTm90IEF2YWlsYWJsZTwvdGV4dD4KPC9zdmc+';
+                }}
+              />
+              
+              {/* Navigation Controls */}
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                  >
+                    <ChevronLeftIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                  >
+                    <ChevronRightIcon className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Auto-play Control */}
+                  <button
+                    onClick={() => setIsAutoPlay(!isAutoPlay)}
+                    className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                    title={isAutoPlay ? "Pause slideshow" : "Play slideshow"}
+                  >
+                    {isAutoPlay ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}
+                  </button>
+                  
+                  {/* Image Indicators */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    {photos.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              {/* Image Counter */}
+              <div className="absolute top-4 right-4 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                {currentImageIndex + 1} / {photos.length}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Description */}
+        {week.description && (
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-white mb-2">Description</h3>
+            <p className="text-gray-300 leading-relaxed">{week.description}</p>
+          </div>
+        )}
+        
+        {/* PDF Viewer */}
+        {pdfs.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-4">Documents</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pdfs.map((pdf) => (
+                <div key={pdf.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <div>
+                        <p className="text-white font-medium">{pdf.file_name}</p>
+                        <p className="text-gray-400 text-sm">{Math.round((pdf.file_size || 0) / 1024)} KB</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedPdf(pdf)}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+                    >
+                      View PDF
+                    </button>
+                  </div>
+                  
+                  {/* PDF Preview */}
+                  <div className="bg-white rounded h-40 flex items-center justify-center">
+                    <iframe
+                      src={`${pdf.file_url}#toolbar=0&navpanes=0&scrollbar=0`}
+                      className="w-full h-full rounded pointer-events-none"
+                      title={`${pdf.file_name} preview`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* PDF Modal */}
+      {selectedPdf && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedPdf(null)}
+          title={selectedPdf.file_name}
+          size="xl"
+        >
+          <div className="bg-white rounded-lg" style={{height: '600px'}}>
+            <iframe
+              src={`${selectedPdf.file_url}#toolbar=1&navpanes=1&scrollbar=1`}
+              className="w-full h-full rounded-lg"
+              title={selectedPdf.file_name}
+            />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 export default function WeeksPage() {
-  const router = useRouter();
-  const { user, isAdmin, isLoading: authLoading, isInitialized } = useAuth();
+  const { isAdmin } = useAuth();
+  
+  // Use simple state instead of complex data fetching hook
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,42 +258,53 @@ export default function WeeksPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Redirect to login if not authenticated and auth is initialized
+  // Fetch weeks data
   useEffect(() => {
-    if (isInitialized && !authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-  }, [user, authLoading, isInitialized, router]);
-
-  useEffect(() => {
-    if (user) {
-      fetchWeeks();
-    }
-  }, [user]);
-
-  const fetchWeeks = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/weeks');
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch weeks');
+    const fetchWeeks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/weeks');
+        if (!response.ok) {
+          throw new Error('Failed to fetch weeks');
+        }
+        
+        const data = await response.json();
+        console.log('Weeks data received:', data);
+        setWeeks(data.weeks || []);
+      } catch (err) {
+        console.error('Error fetching weeks:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load weeks');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setWeeks(data.weeks);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+    fetchWeeks();
+  }, []);
+
+  // Refetch weeks when needed
+  const refetchWeeks = () => {
+    setWeeks([]);
+    setLoading(true);
+    // Trigger re-fetch
+    const fetchWeeks = async () => {
+      try {
+        const response = await fetch('/api/weeks');
+        if (response.ok) {
+          const data = await response.json();
+          setWeeks(data.weeks || []);
+        }
+      } catch {
+        setError('Failed to refresh weeks');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWeeks();
   };
 
-  const openWeekModal = (week: Week) => {
-    setSelectedWeek(week);
-    setSelectedFileIndex(0);
-  };
 
   const closeWeekModal = () => {
     setSelectedWeek(null);
@@ -109,17 +340,13 @@ export default function WeeksPage() {
         throw new Error(data.error || 'Failed to update week');
       }
 
-      // Update the week in the local state
-      setWeeks(prev => prev.map(week => 
-        week.id === editingWeek.id 
-          ? { ...week, title: editForm.title, description: editForm.description }
-          : week
-      ));
+      // Refetch weeks to get updated data
+      refetchWeeks();
 
       setEditingWeek(null);
-      setError(null);
+      // Error is now handled by the hook
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update week');
+      console.error('Failed to update week:', err);
     } finally {
       setIsEditing(false);
     }
@@ -141,11 +368,11 @@ export default function WeeksPage() {
         throw new Error(data.error || 'Failed to delete week');
       }
 
-      // Remove the week from local state
-      setWeeks(prev => prev.filter(week => week.id !== weekId));
-      setError(null);
+      // Refetch weeks to get updated data
+      refetchWeeks();
+      // Error is now handled by the hook
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete week');
+      console.error('Failed to delete week:', err);
     } finally {
       setIsDeleting(null);
     }
@@ -185,32 +412,9 @@ export default function WeeksPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
 
-  // Show loading while auth is initializing
-  if (!isInitialized || authLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render anything if user is not authenticated (will redirect)
-  if (!user) {
-    return null;
-  }
-
+  // Since weeks are publicly accessible, we don't need to wait for auth initialization
+  // Only show loading for the actual data fetch
   if (loading) {
     return (
       <div className="space-y-6">
@@ -237,7 +441,7 @@ export default function WeeksPage() {
             </div>
             <p className="text-red-400 mb-4">{error}</p>
             <button
-              onClick={fetchWeeks}
+              onClick={refetchWeeks}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               Try Again
@@ -269,103 +473,9 @@ export default function WeeksPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 animate-slide-in">
+        <div className="space-y-8">
           {weeks.map((week) => (
-            <div
-              key={week.id}
-              className="bg-glass backdrop-blur-md rounded-xl p-4 sm:p-6 border border-glass shadow-glass hover:bg-glass-dark hover:shadow-glass-lg hover:border-blue-400/50 transition-all duration-300 group"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">
-                    Week {week.week_number}
-                  </h3>
-                  <p className="text-gray-400 text-sm">{formatDate(week.created_at)}</p>
-                </div>
-                
-                {/* Admin Controls */}
-                {isAdmin && (
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditWeek(week);
-                      }}
-                      className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors"
-                      title="Edit week"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteWeek(week.id);
-                      }}
-                      disabled={isDeleting === week.id}
-                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
-                      title="Delete week"
-                    >
-                      {isDeleting === week.id ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"></div>
-                      ) : (
-                        <TrashIcon className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                )}
-                
-                {/* View Arrow */}
-                <button
-                  onClick={() => openWeekModal(week)}
-                  className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors ml-2"
-                  title="View week"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-
-              <div 
-                className="cursor-pointer"
-                onClick={() => openWeekModal(week)}
-              >
-                <h4 className="text-white font-medium mb-2">{week.title}</h4>
-                
-                {week.description && (
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                    {week.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 text-sm text-gray-400">
-                    {week.week_files.filter(f => f.file_type === 'photo').length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        {getFileTypeIcon('photo')}
-                        <span>{week.week_files.filter(f => f.file_type === 'photo').length}</span>
-                      </div>
-                    )}
-                    {week.week_files.filter(f => f.file_type === 'video').length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        {getFileTypeIcon('video')}
-                        <span>{week.week_files.filter(f => f.file_type === 'video').length}</span>
-                      </div>
-                    )}
-                    {week.week_files.filter(f => f.file_type === 'pdf').length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        {getFileTypeIcon('pdf')}
-                        <span>{week.week_files.filter(f => f.file_type === 'pdf').length}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <span className="text-xs text-gray-500">
-                    {week.week_files.length} file{week.week_files.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <WeekCard key={week.id} week={week} isAdmin={isAdmin} onEdit={handleEditWeek} onDelete={handleDeleteWeek} isDeleting={isDeleting === week.id} />
           ))}
         </div>
       )}
@@ -420,7 +530,10 @@ export default function WeeksPage() {
 
                 {/* Current File Viewer */}
                 {selectedWeek.week_files[selectedFileIndex] && (
-                  <FileViewer file={selectedWeek.week_files[selectedFileIndex]} />
+                  <FileViewer 
+                    file={selectedWeek.week_files[selectedFileIndex]} 
+                    onClose={closeWeekModal}
+                  />
                 )}
 
                 {/* Navigation Arrows */}

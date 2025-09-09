@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import AdminRequestDashboard from '@/components/AdminRequestDashboard';
-import { getCurrentUser } from '@/lib/auth';
+import { AuthGuard } from '@/components/ui/AuthGuard';
 
 interface UploadedFile {
   file: File;
@@ -11,7 +11,7 @@ interface UploadedFile {
   preview?: string;
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const [weekNumber, setWeekNumber] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -19,31 +19,6 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'upload' | 'requests'>('upload');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    checkAdminStatus();
-  }, []);
-
-  const checkAdminStatus = async () => {
-    try {
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout')), 10000);
-      });
-      
-      const adminPromise = getCurrentUser();
-      const { isAdmin: adminStatus } = await Promise.race([adminPromise, timeoutPromise]) as any;
-      
-      setIsAdmin(adminStatus || false);
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      setIsAdmin(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
@@ -138,16 +113,10 @@ export default function AdminPage() {
         formData.append('files', file);
       });
 
-      const response = await fetch('/api/weeks', {
-        method: 'POST',
-        body: formData,
-      });
+      const { authenticatedFormFetch, handleApiResponse } = await import('@/lib/api-client');
+      const response = await authenticatedFormFetch('/api/weeks', formData);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload failed');
-      }
+      const result = await handleApiResponse(response);
 
       setMessage({ type: 'success', text: 'Week uploaded successfully!' });
       
@@ -184,34 +153,7 @@ export default function AdminPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass">
-          <div className="animate-pulse">
-            <div className="h-8 bg-glass rounded w-1/3 mb-8"></div>
-            <div className="h-64 bg-glass rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (!isAdmin) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-glass backdrop-blur-md rounded-xl p-8 border border-glass shadow-glass text-center animate-fade-in">
-          <div className="text-red-400 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
-          <p className="text-gray-300">You need admin privileges to access this page.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -430,5 +372,13 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <AuthGuard requireAuth={true} requireAdmin={true}>
+      <AdminPageContent />
+    </AuthGuard>
   );
 }

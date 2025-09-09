@@ -55,11 +55,11 @@ export function useGroups() {
   return useSupabaseQuery(
     'groups',
     async () => {
-      const response = await fetch('/api/groups');
-      if (!response.ok) {
-        throw new Error('Failed to fetch groups');
+      const { api } = await import('@/lib/api');
+      const data = await api.get('/api/groups');
+      if (data.error) {
+        throw new Error(data.error);
       }
-      const data = await response.json();
       return data.groups || [];
     },
     {

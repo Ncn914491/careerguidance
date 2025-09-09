@@ -1,112 +1,75 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Database } from '@/lib/supabase'
+import { type GroupMessageWithProfile } from '@/types/database'
+import { api } from '@/lib/api'
 
-type Message = Database['public']['Tables']['group_messages']['Row'] & {
-  profiles: {
-    full_name: string | null
-    email: string
-  } | null
-}
+type Message = GroupMessageWithProfile
 
 export function useRealtimeMessages(groupId: string | null) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchMessages = useCallback(async () => {
+    if (!groupId) return
+
+    setLoading(true)
+    try {
+      const data = await api.get(`/api/groups/${groupId}/messages`)
+      if (data.error) {
+        if (data.status === 401) {
+          setError('Please log in to view messages')
+        } else if (data.status === 403) {
+          setError('You need to join this group to view messages')
+        } else {
+          setError(data.error || 'Failed to load messages')
+        }
+        return
+      }
+      setMessages(data.messages || [])
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching messages:', err)
+      setError('Failed to load messages')
+    } finally {
+      setLoading(false)
+    }
+  }, [groupId])
+
   useEffect(() => {
+    fetchMessages()
+
     if (!groupId) {
       setMessages([])
       setLoading(false)
       return
     }
 
-    // Fetch initial messages
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(`/api/groups/${groupId}/messages`)
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          console.error('Messages API error:', response.status, errorData)
-          
-          if (response.status === 401) {
-            setError('Please log in to view messages')
-          } else if (response.status === 403) {
-            setError('You need to join this group to view messages')
-          } else {
-            setError(errorData.error || 'Failed to load messages')
-          }
-          return
-        }
-        const data = await response.json()
-        setMessages(data.messages || [])
-        setError(null)
-      } catch (err) {
-        console.error('Error fetching messages:', err)
-        setError('Failed to load messages')
-      } finally {
-        setLoading(false)
-      }
-    }
+    const channel = supabase.channel(`group-channel:${groupId}`)
 
-    fetchMessages()
-
-    // Set up real-time subscription
-    const channel = supabase
-      .channel(`group_messages:${groupId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'group_messages',
-          filter: `group_id=eq.${groupId}`
-        },
-        async (payload) => {
-          // Fetch the complete message with profile information
-          const { data: newMessage, error } = await supabase
-            .from('group_messages')
-            .select(`
-              *,
-              profiles:sender_id (
-                full_name,
-                email
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single()
-
-          if (!error && newMessage) {
-            setMessages(prev => [...prev, newMessage])
-          }
-        }
-      )
+    channel
+      .on('broadcast', { event: 'new_message' }, (payload) => {
+        setMessages((prev) => [...prev, payload.payload as Message])
+      })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [groupId])
+  }, [groupId, fetchMessages])
 
-  const sendMessage = async (message: string): Promise<boolean> => {
-    if (!groupId || !message.trim()) return false
+  const sendMessage = async (content: string): Promise<boolean> => {
+    if (!groupId || !content.trim()) return false
 
     try {
-      const response = await fetch(`/api/groups/${groupId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: message.trim() })
+      const data = await api.post(`/api/groups/${groupId}/messages`, {
+        message: content.trim()
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to send message')
+      if (data.error) {
+        setError(data.error || 'Failed to send message')
+        return false
       }
-
-      // Message will be added via real-time subscription
       return true
     } catch (err) {
       console.error('Error sending message:', err)
@@ -115,10 +78,5 @@ export function useRealtimeMessages(groupId: string | null) {
     }
   }
 
-  return {
-    messages,
-    loading,
-    error,
-    sendMessage
-  }
+  return { messages, loading, error, sendMessage, refetch: fetchMessages }
 }

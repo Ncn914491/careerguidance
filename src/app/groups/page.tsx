@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/AuthProvider'
 import GroupsSidebar from '@/components/groups/GroupsSidebar'
 import GroupChatArea from '@/components/groups/GroupChatArea'
+import { api } from '@/lib/api'
+import { useAuthenticatedAPI } from '@/hooks/useSupabaseData'
 
 interface Group {
   id: string
@@ -15,13 +17,18 @@ interface Group {
   created_at: string
 }
 
+interface GroupsResponse {
+  groups: Group[];
+}
+
 export default function GroupsPage() {
   const router = useRouter()
-  const { user, isLoading: authLoading, isInitialized } = useAuth()
-  const [groups, setGroups] = useState<Group[]>([])
+  const { user, isAdmin, isLoading: authLoading, isInitialized } = useAuth()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  
+  // Use the new data fetching hook
+  const { data: groupsData, loading, error, refetch } = useAuthenticatedAPI<GroupsResponse>('/api/groups')
+  const groups = groupsData?.groups || []
 
   // Redirect to login if not authenticated and auth is initialized
   useEffect(() => {
@@ -31,32 +38,10 @@ export default function GroupsPage() {
     }
   }, [user, authLoading, isInitialized, router])
 
-  // Fetch groups
-  useEffect(() => {
-    if (!user) return
-
-    const fetchGroups = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/groups', {
-          credentials: 'include'
-        })
-        if (!response.ok) {
-          throw new Error('Failed to fetch groups')
-        }
-        const data = await response.json()
-        setGroups(data.groups || [])
-        setError(null)
-      } catch (err) {
-        console.error('Error fetching groups:', err)
-        setError('Failed to load groups')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchGroups()
-  }, [user])
+  // Refetch groups when needed
+  const refetchGroups = () => {
+    refetch();
+  };
 
   const handleSelectGroup = (groupId: string) => {
     setSelectedGroupId(groupId)
@@ -66,27 +51,18 @@ export default function GroupsPage() {
     try {
       console.log('Attempting to join group:', groupId)
       
-      const response = await fetch(`/api/groups/${groupId}/join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
-      const data = await response.json()
+      const data = await api.post(`/api/groups/${groupId}/join`, {})
       console.log('Join group response:', data)
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to join group')
+      if (data.error) {
+        throw new Error(data.error)
       }
 
-      // Update local state
-      setGroups(prev => prev.map(group => 
-        group.id === groupId 
-          ? { ...group, is_member: true, member_count: group.member_count + 1 }
-          : group
-      ))
+      // Refetch groups to get updated data
+      refetchGroups()
+      
+      // Automatically select the joined group
+      setSelectedGroupId(groupId)
 
       console.log('Successfully joined group:', data.message)
     } catch (err) {
@@ -97,27 +73,15 @@ export default function GroupsPage() {
 
   const handleCreateGroup = async (name: string, description: string) => {
     try {
-      const response = await fetch('/api/groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name, description })
-      })
+      const data = await api.post('/api/groups', { name, description })
 
-      if (!response.ok) {
-        throw new Error('Failed to create group')
+      if (data.error) {
+        throw new Error(data.error)
       }
 
-      const data = await response.json()
-      const newGroup = {
-        ...data.group,
-        member_count: 1,
-        is_member: true
-      }
-      
-      setGroups(prev => [newGroup, ...prev])
-      setSelectedGroupId(newGroup.id)
+      // Refetch groups to get updated data
+      refetchGroups()
+      setSelectedGroupId(data.group.id)
     } catch (err) {
       console.error('Error creating group:', err)
       // You could show a toast notification here
@@ -145,7 +109,7 @@ export default function GroupsPage() {
           <h3 className="text-lg font-semibold text-red-300 mb-2">Error Loading Groups</h3>
           <p className="text-red-300">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={refetchGroups}
             className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
           >
             Retry
@@ -155,7 +119,7 @@ export default function GroupsPage() {
     )
   }
 
-  const selectedGroup = selectedGroupId ? groups.find(g => g.id === selectedGroupId) : null
+  const selectedGroup: Group | null = selectedGroupId ? groups.find(g => g.id === selectedGroupId) || null : null
 
   return (
     <div className="h-[calc(100vh-8rem)] flex bg-glass backdrop-blur-md rounded-xl border border-glass shadow-glass overflow-hidden">
@@ -168,12 +132,14 @@ export default function GroupsPage() {
         onCreateGroup={handleCreateGroup}
         loading={loading}
         currentUserId={user?.id}
+        isAdmin={isAdmin}
       />
 
       {/* Chat Area */}
       <GroupChatArea
         group={selectedGroup}
         currentUserId={user?.id}
+        isAdmin={isAdmin}
       />
     </div>
   )

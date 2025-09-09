@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getCurrentUserServer, requireAdminServer } from '@/lib/auth-server';
+import { supabase } from '@/lib/supabase';
+import { type Profile } from '@/types/database';
 
 // Use admin client to bypass RLS issues
 const supabaseAdmin = createClient(
@@ -16,8 +17,9 @@ const supabaseAdmin = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    // Allow viewing weeks without authentication (public access)
-    const { data: weeks, error } = await supabaseAdmin
+    // Weeks are publicly accessible - no authentication required
+    // Use regular client since we fixed RLS policies to allow public access
+    const { data: weeks, error } = await supabase
       .from('weeks')
       .select(`
         *,
@@ -30,7 +32,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch weeks' }, { status: 500 });
     }
 
-    return NextResponse.json({ weeks: weeks || [] });
+    return NextResponse.json({ 
+      weeks: weeks || []
+    });
   } catch (error) {
     console.error('Server error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -39,11 +43,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if user is admin
-    const { user } = await requireAdminServer(request);
-    
+    const { getUserFromAuthHeader } = await import('@/lib/auth-client');
+    const authHeader = request.headers.get('Authorization');
+    const { user } = await getUserFromAuthHeader(authHeader);
+
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Check user role from database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 
     const formData = await request.formData();

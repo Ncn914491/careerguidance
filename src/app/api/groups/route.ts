@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getCurrentUserServer, requireAdminServer } from '@/lib/auth-server'
+import { supabase } from '@/lib/supabase';
 
 // Use admin client to bypass RLS issues temporarily
 const supabaseAdmin = createClient(
@@ -16,15 +16,12 @@ const supabaseAdmin = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    // Get current user session from cookies (optional for viewing groups)
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
     let userId: string | undefined;
-    try {
-      const { user } = await getCurrentUserServer(request);
+
+    if (token) {
+      const { data: { user } } = await supabase.auth.getUser(token);
       userId = user?.id;
-    } catch (authError) {
-      // Allow viewing groups even without authentication
-      console.log('No authentication for groups view, continuing without user context');
-      userId = undefined;
     }
 
     // Get groups with member count and user membership status
@@ -85,8 +82,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Require admin access for creating groups
-    const { user } = await requireAdminServer(request);
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
     
     const { name, description } = await request.json()
 

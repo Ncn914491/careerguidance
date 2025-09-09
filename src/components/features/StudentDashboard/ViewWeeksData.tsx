@@ -14,7 +14,7 @@ import FileViewer from '@/components/ui/FileViewer';
 
 interface WeekFile {
   id: string;
-  filename: string;
+  file_name: string;
   file_type: 'photo' | 'video' | 'pdf';
   file_url: string;
   file_size: number;
@@ -26,7 +26,7 @@ interface Week {
   title: string;
   description: string;
   created_at: string;
-  files: WeekFile[];
+  week_files: WeekFile[];
 }
 
 export function ViewWeeksData() {
@@ -122,7 +122,7 @@ export function ViewWeeksData() {
         <div className="space-y-4">
           {weeks.map((week) => {
             const isExpanded = expandedWeek === week.id;
-            const { photos, videos, pdfs } = groupFilesByType(week.files);
+            const { photos, videos, pdfs } = groupFilesByType(week.week_files || []);
             
             return (
               <div key={week.id} className="bg-glass backdrop-blur-md rounded-xl border border-glass overflow-hidden">
@@ -193,7 +193,7 @@ export function ViewWeeksData() {
                             >
                               <img
                                 src={file.file_url}
-                                alt={file.filename}
+                                alt={file.file_name}
                                 className="w-full h-32 object-cover rounded-lg border border-glass"
                               />
                               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
@@ -224,7 +224,7 @@ export function ViewWeeksData() {
                                 Your browser does not support the video tag.
                               </video>
                               <div className="mt-2 flex justify-between items-center">
-                                <span className="text-sm text-white truncate">{file.filename}</span>
+                                <span className="text-sm text-white truncate">{file.file_name}</span>
                                 <span className="text-xs text-gray-400">{formatFileSize(file.file_size)}</span>
                               </div>
                             </div>
@@ -250,7 +250,7 @@ export function ViewWeeksData() {
                               <div className="flex items-center gap-3">
                                 <DocumentIcon className="w-8 h-8 text-red-400" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-white font-medium truncate">{file.filename}</p>
+                                  <p className="text-white font-medium truncate">{file.file_name}</p>
                                   <p className="text-sm text-gray-400">{formatFileSize(file.file_size)}</p>
                                 </div>
                                 <EyeIcon className="w-5 h-5 text-gray-400" />

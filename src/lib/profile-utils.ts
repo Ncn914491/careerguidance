@@ -1,5 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { type UserRole, type TablesInsert, type TablesUpdate } from '@/types/database';
 
 /**
  * Ensure a user profile exists in the profiles table
@@ -19,23 +20,25 @@ export async function ensureProfileExists(user: User) {
     }
 
     // Create profile
+    const profileData: TablesInsert<'profiles'> = {
+      id: user.id,
+      email: user.email || '',
+      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      role: 'student'
+    };
+
     const { error } = await supabase
       .from('profiles')
-      .insert({
-        id: user.id,
-        email: user.email || '',
-        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        role: 'student'
-      });
+      .insert(profileData);
 
     if (error) {
       console.error('Error creating profile:', error);
       
       // Try using the database function as fallback
-      const { error: functionError } = await supabase.rpc('ensure_profile_exists', {
+      const { error: functionError } = await (supabase as any).rpc('ensure_profile_exists', {
         user_id: user.id,
         user_email: user.email || '',
-        user_name: user.user_metadata?.full_name || null
+        user_name: user.user_metadata?.full_name as string || null
       });
 
       if (functionError) {
@@ -68,9 +71,10 @@ export async function addUserToDefaultGroups(userId: string) {
     }
 
     // Add user to each default group
-    const memberships = defaultGroups.map(group => ({
+    const memberships: TablesInsert<'group_members'>[] = defaultGroups.map(group => ({
       group_id: group.id,
-      user_id: userId
+      user_id: userId,
+      role: 'member'
     }));
 
     const { error } = await supabase
@@ -115,15 +119,17 @@ export async function getUserProfile(userId: string) {
  */
 export async function updateUserProfile(userId: string, updates: {
   full_name?: string;
-  role?: 'student' | 'admin';
+  role?: UserRole;
 }) {
   try {
+    const updateData: TablesUpdate<'profiles'> = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', userId);
 
     if (error) {

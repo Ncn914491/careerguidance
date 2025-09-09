@@ -39,7 +39,12 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       ...initialState,
       
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        set({ user });
+        if (user) {
+          set({ lastActivity: Date.now() });
+        }
+      },
       
       setSession: (session) => set({ session }),
       
@@ -51,15 +56,15 @@ export const useAuthStore = create<AuthStore>()(
       
       updateActivity: () => set({ lastActivity: Date.now() }),
       
-      reset: () => set(initialState),
+      reset: () => set({ ...initialState, isInitialized: false }),
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        // Only persist non-sensitive data
+        // Don't persist auth state to prevent hydration issues
         lastActivity: state.lastActivity,
-        isInitialized: state.isInitialized,
       }),
+      skipHydration: true, // Skip hydration to prevent SSR mismatches
     }
   )
 );

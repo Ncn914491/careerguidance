@@ -1,20 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getCurrentUserFromRequest } from '@/lib/auth-client';
+import { type Profile } from '@/types/database';
 
 // PUT - Update week details (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, isAdmin } = await getCurrentUserFromRequest(request);
-    
-    if (!user) {
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    if (!isAdmin) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check user role from database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 
@@ -24,6 +37,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
+    const params = await context.params;
     const { data, error } = await supabase
       .from('weeks')
       .update({
@@ -50,19 +64,34 @@ export async function PUT(
 // DELETE - Delete week and associated files (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, isAdmin } = await getCurrentUserFromRequest(request);
-    
-    if (!user) {
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    if (!isAdmin) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check user role from database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 
+    const params = await context.params;
+    
     // First, get all files associated with this week
     const { data: weekFiles, error: filesError } = await supabase
       .from('week_files')

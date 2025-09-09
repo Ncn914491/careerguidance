@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getCurrentUser } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
+
+import { Database } from '@/lib/database.types'
 
 // Server-side Supabase client with service role for admin operations
-const supabaseAdmin = createClient(
+const supabaseAdmin = createClient<Database>(
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
@@ -17,13 +19,30 @@ const supabaseAdmin = createClient(
 // PATCH /api/admin/requests/[id] - Approve or deny admin request
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, isAdmin } = await getCurrentUser()
-    
-    if (!user || !isAdmin) {
-      return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 })
+    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Check user role from database
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || (profile as any)?.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 
     const { action } = await request.json()
@@ -32,8 +51,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid action. Must be "approve" or "deny"' }, { status: 400 })
     }
 
-    const resolvedParams = await params
-    const requestId = resolvedParams.id
+    const params = await context.params;
+    const requestId = params.id
 
     // First, get the request to check if it exists and is pending
     const { data: adminRequest, error: fetchError } = await supabaseAdmin
@@ -47,13 +66,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Request not found' }, { status: 404 })
     }
 
-    if (adminRequest.status !== 'pending') {
+    if ((adminRequest as any).status !== 'pending') {
       return NextResponse.json({ error: 'Request has already been processed' }, { status: 400 })
     }
 
     // Update the request status
     const newStatus = action === 'approve' ? 'approved' : 'denied'
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await (supabaseAdmin as any)
       .from('admin_requests')
       .update({
         status: newStatus,
@@ -70,15 +89,15 @@ export async function PATCH(
     // Update user role based on action
     if (action === 'approve') {
       // Approve: pending_admin -> admin
-      const { error: roleUpdateError } = await supabaseAdmin
+      const { error: roleUpdateError } = await (supabaseAdmin as any)
         .from('profiles')
         .update({ role: 'admin' })
-        .eq('id', adminRequest.user_id)
+        .eq('id', (adminRequest as any).user_id)
 
       if (roleUpdateError) {
         console.error('Error updating user role to admin:', roleUpdateError)
         // Revert the request status if role update fails
-        await supabaseAdmin
+        await (supabaseAdmin as any)
           .from('admin_requests')
           .update({
             status: 'pending',
@@ -91,10 +110,10 @@ export async function PATCH(
       }
     } else if (action === 'deny') {
       // Deny: pending_admin -> student
-      const { error: roleUpdateError } = await supabaseAdmin
+      const { error: roleUpdateError } = await (supabaseAdmin as any)
         .from('profiles')
         .update({ role: 'student' })
-        .eq('id', adminRequest.user_id)
+        .eq('id', (adminRequest as any).user_id)
 
       if (roleUpdateError) {
         console.error('Error reverting user role to student:', roleUpdateError)

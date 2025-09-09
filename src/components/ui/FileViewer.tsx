@@ -10,9 +10,10 @@ interface FileViewerProps {
     file_url: string;
     file_size: number | null;
   };
+  onClose: () => void;
 }
 
-export default function FileViewer({ file }: FileViewerProps) {
+export default function FileViewer({ file, onClose }: FileViewerProps) {
   const [imageError, setImageError] = useState(false);
   const [videoError, setVideoError] = useState(false);
 

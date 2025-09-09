@@ -22,27 +22,9 @@ const AdminRequestDashboard = lazy(() => import('@/components/AdminRequestDashbo
 type TabType = 'overview' | 'upload' | 'groups' | 'requests' | 'stats';
 
 export function AdminDashboard() {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-
-  useEffect(() => {
-    if (!isLoading && (!user || !isAdmin)) {
-      router.push('/login');
-    }
-  }, [user, isAdmin, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-2 border-purple-500/30 border-t-purple-500"></div>
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return null;
-  }
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Overview', icon: ChartBarIcon },
@@ -86,7 +68,7 @@ export function AdminDashboard() {
                 Admin Dashboard
               </h1>
               <p className="text-gray-300 text-lg">
-                Welcome back, {user.email}. Manage your career guidance platform.
+                Welcome back, {user?.email || 'Admin'}. Manage your career guidance platform.
               </p>
             </div>
 

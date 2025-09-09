@@ -22,9 +22,10 @@ export async function addUserToDefaultGroups(userId: string) {
     const { error: membershipError } = await supabase
       .from('group_members')
       .insert({
-        group_id: defaultGroup.id,
-        user_id: userId
-      })
+        group_id: (defaultGroup as any).id,
+        user_id: userId,
+        role: 'member' // Assuming a default role for new members
+      } as any)
 
     if (membershipError) {
       console.error('Error adding user to default group:', membershipError)

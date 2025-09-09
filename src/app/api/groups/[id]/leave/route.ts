@@ -1,77 +1,59 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
 
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
-  try {
-    // Get current user
-    const { user } = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+  const params = await context.params;
+  const groupId = params.id;
+  const token = request.headers.get('Authorization')?.split(' ')?.[1];
 
-    const groupId = params.id;
+  if (!token) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+  }
+
+  try {
     const userId = user.id;
 
-    // Check if group exists
-    const { data: group, error: groupError } = await supabase
-      .from('groups')
-      .select('id, name')
-      .eq('id', groupId)
-      .single();
-
-    if (groupError || !group) {
-      return NextResponse.json(
-        { error: 'Group not found' },
-        { status: 404 }
-      );
-    }
-
     // Check if user is a member
-    const { data: member } = await supabase
+    const { data: existingMember, error: memberCheckError } = await supabase
       .from('group_members')
-      .select('id')
+      .select('*')
       .eq('group_id', groupId)
       .eq('user_id', userId)
       .single();
 
-    if (!member) {
-      return NextResponse.json(
-        { error: 'You are not a member of this group' },
-        { status: 400 }
-      );
+    if (memberCheckError && memberCheckError.code !== 'PGRST116') {
+      console.error('Error checking group membership:', memberCheckError);
+      return NextResponse.json({ error: 'Failed to check group membership' }, { status: 500 });
     }
 
-    // Remove user from group
-    const { error: leaveError } = await supabase
+    if (!existingMember) {
+      return NextResponse.json({ message: 'Not a member of this group' }, { status: 200 });
+    }
+
+    // Remove user from the group
+    const { error: deleteError } = await supabase
       .from('group_members')
       .delete()
       .eq('group_id', groupId)
       .eq('user_id', userId);
 
-    if (leaveError) {
-      console.error('Error leaving group:', leaveError);
-      return NextResponse.json(
-        { error: 'Failed to leave group' },
-        { status: 500 }
-      );
+    if (deleteError) {
+      console.error('Error leaving group:', deleteError);
+      return NextResponse.json({ error: 'Failed to leave group' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: `Successfully left ${group.name}`
-    });
+    return NextResponse.json({ message: 'Successfully left group' }, { status: 200 });
   } catch (error) {
-    console.error('Error in leave group API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('An unexpected error occurred:', error);
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }

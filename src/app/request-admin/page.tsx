@@ -2,30 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import AdminRequestForm from '@/components/AdminRequestForm';
-import { getCurrentUser } from '@/lib/auth';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function RequestAdminPage() {
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, isInitialized, isLoading: authLoading } = useAuth();
   const [isPendingAdmin, setIsPendingAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkUserStatus();
-  }, []);
+    // Set loading state based on authLoading and isInitialized
+    setIsLoading(authLoading || !isInitialized);
+    
+    // Check if user is pending admin (this would typically come from user metadata or a profile table)
+    // For now, we'll assume it's false unless explicitly set elsewhere
+    setIsPendingAdmin(false); // Placeholder - implement actual check if needed
 
-  const checkUserStatus = async () => {
-    try {
-      const { user: currentUser, isAdmin: adminStatus, isPendingAdmin: pendingStatus } = await getCurrentUser();
-      setUser(currentUser);
-      setIsAdmin(adminStatus);
-      setIsPendingAdmin(pendingStatus || false);
-    } catch (error) {
-      console.error('Error checking user status:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [user, isAdmin, isInitialized, authLoading]);
 
   if (isLoading) {
     return (

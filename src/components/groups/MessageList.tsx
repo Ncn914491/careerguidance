@@ -3,10 +3,11 @@
 import { useEffect, useRef } from 'react'
 import { Database } from '@/lib/supabase'
 
-type Message = Database['public']['Tables']['group_messages']['Row'] & {
+type Message = Database['public']['Tables']['messages']['Row'] & {
   profiles: {
     full_name: string | null
-    email: string
+    avatar_url: string | null
+    email?: string | null
   } | null
 }
 
@@ -52,7 +53,7 @@ export default function MessageList({ messages, loading, currentUserId }: Messag
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => {
           const isOwnMessage = message.sender_id === currentUserId
-          const senderName = message.profiles?.full_name || message.profiles?.email || 'Unknown User'
+          const senderName = message.profiles?.full_name || 'Unknown User'
           
           return (
             <div

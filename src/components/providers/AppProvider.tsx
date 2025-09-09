@@ -9,28 +9,24 @@ interface AppProviderProps {
 
 export default function AppProvider({ children }: AppProviderProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [showContent, setShowContent] = useState(false)
+  const [showContent, setShowContent] = useState(true) // Default to true to prevent blocking
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     
-    // Check if this is the first visit in this session
+    // Only show loading animation on the home page and if not seen before
+    const isHomePage = window.location.pathname === '/'
     const hasSeenAnimation = sessionStorage.getItem('hasSeenAnimation')
     
-    if (hasSeenAnimation) {
-      // Skip animation if already seen in this session
+    if (isHomePage && !hasSeenAnimation) {
+      setIsLoading(true)
+      setShowContent(false)
+    } else {
+      // For all other cases, show content immediately
       setIsLoading(false)
       setShowContent(true)
-    } else {
-      // Show animation for first visit only on home page
-      const isHomePage = window.location.pathname === '/'
-      if (isHomePage) {
-        setIsLoading(true)
-      } else {
-        // Skip animation for other pages
-        setIsLoading(false)
-        setShowContent(true)
+      if (!hasSeenAnimation) {
         try {
           sessionStorage.setItem('hasSeenAnimation', 'true')
         } catch (error) {
@@ -47,12 +43,16 @@ export default function AppProvider({ children }: AppProviderProps) {
       console.warn('Could not save to sessionStorage:', error)
     }
     setIsLoading(false)
-    setTimeout(() => setShowContent(true), 100)
+    setShowContent(true)
   }
 
   // Don't render anything until mounted (prevents hydration issues)
   if (!mounted) {
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950">
+        <div className="animate-spin rounded-full h-16 w-16 border-2 border-purple-500/30 border-t-purple-500"></div>
+      </div>
+    )
   }
 
   if (isLoading) {
@@ -60,7 +60,7 @@ export default function AppProvider({ children }: AppProviderProps) {
   }
 
   return (
-    <div className={`transition-opacity duration-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`transition-opacity duration-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
       {children}
     </div>
   )

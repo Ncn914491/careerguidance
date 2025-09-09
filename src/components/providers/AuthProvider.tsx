@@ -1,21 +1,18 @@
 'use client';
 
-import { createContext, useContext, useEffect, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { isSeededAdmin } from '@/lib/auth-client';
-import { useAuthStore } from '@/store/authStore';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
-  isAdmin: boolean;
+  role: 'student' | 'admin' | null;
   isLoading: boolean;
+  isAdmin: boolean;
   isInitialized: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: any; redirectTo?: string }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: any; needsEmailConfirmation?: boolean; user?: User; redirectTo?: string }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: unknown; redirectTo?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: unknown; needsEmailConfirmation?: boolean; user?: User; redirectTo?: string }>;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,134 +26,71 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const {
-    user,
-    session,
-    isAdmin,
-    isLoading,
-    isInitialized,
-    setUser,
-    setSession,
-    setIsAdmin,
-    setIsLoading,
-    setIsInitialized
-  } = useAuthStore();
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<'student' | 'admin' | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const checkUserRole = useCallback(async (userId: string, email: string) => {
-    if (isSeededAdmin(email)) {
-      setIsAdmin(true);
-      return true;
-    }
+  // Computed property for isAdmin
+  const isAdmin = role === 'admin';
 
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
+  // Simple role determination based on email
+  const determineUserRole = (email: string | undefined): 'student' | 'admin' => {
+    const adminEmails = ['nchaitanyanaidu@yahoo.com', 'admin@example.com'];
+    return email && adminEmails.includes(email) ? 'admin' : 'student';
+  };
 
-      if (error) {
-        console.error('Error checking user role:', error);
-        setIsAdmin(false);
-        return false;
-      }
-
-      const adminStatus = profile?.role === 'admin';
-      setIsAdmin(adminStatus);
-      return adminStatus;
-    } catch (error) {
-      console.error('Error checking user role:', error);
-      setIsAdmin(false);
-      return false;
-    }
-  }, [setIsAdmin]);
-
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) throw error;
-      
-      if (session) {
-        setSession(session);
-        setUser(session.user);
-        await checkUserRole(session.user.id, session.user.email || '');
-      }
-    } catch (error) {
-      console.error('Error refreshing session:', error);
-    }
-  }, [checkUserRole]);
-
+  // Initialize auth - much simpler approach
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    // Check for existing session
-    const initializeAuth = async () => {
+    const init = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (!mounted) return;
-
-        if (error) {
-          console.error('Error getting session:', error);
-        } else if (session?.user) {
-          setSession(session);
+        if (!isMounted) return;
+        
+        if (session?.user) {
           setUser(session.user);
-          await checkUserRole(session.user.id, session.user.email || '');
+          setRole(determineUserRole(session.user.email));
+        } else {
+          setUser(null);
+          setRole(null);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('Auth init error:', error);
+        if (isMounted) {
+          setUser(null);
+          setRole(null);
+        }
       } finally {
-        if (mounted) {
+        if (isMounted) {
           setIsLoading(false);
           setIsInitialized(true);
         }
       }
     };
 
-    // Initialize auth state
-    initializeAuth();
-
-    // Listen for auth changes with optimized handling
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-
-        console.log('Auth state change:', event, !!session);
-
-        // Update session and user immediately for instant UI updates
-        setSession(session);
-        setUser(session?.user || null);
-
-        if (session?.user) {
-          // Ensure profile exists for new signups and sign-ins
-          if (event === 'SIGNED_IN') {
-            try {
-              const { ensureProfileExists } = await import('@/lib/profile-utils');
-              await ensureProfileExists(session.user);
-            } catch (error) {
-              console.warn('Could not ensure profile exists:', error);
-            }
-          }
-          
-          // Check role after profile operations
-          await checkUserRole(session.user.id, session.user.email || '');
-        } else {
-          setIsAdmin(false);
-        }
-
-        // Set loading to false after auth state is processed
-        if (mounted) {
-          setIsLoading(false);
-          setIsInitialized(true);
-        }
+    // Auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        setRole(determineUserRole(session.user.email));
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setRole(null);
       }
-    );
+    });
+
+    init();
 
     return () => {
-      mounted = false;
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, [checkUserRole]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -168,38 +102,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        setIsLoading(false);
         return { success: false, error };
       }
 
-      // Session will be updated via onAuthStateChange
-      // Determine redirect path based on role
-      const isAdminUser = isSeededAdmin(email);
-      let redirectTo = '/student/dashboard';
-      
-      if (isAdminUser) {
-        redirectTo = '/admin/dashboard';
-      } else {
-        // Check role from database for non-seeded users
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', data.user.id)
-            .single();
-          
-          if (!error && profile?.role === 'admin') {
-            redirectTo = '/admin/dashboard';
-          }
-        } catch (error) {
-          console.warn('Could not check user role:', error);
-        }
+      if (data.user && data.session) {
+        const userRole = determineUserRole(data.user.email);
+        const redirectTo = userRole === 'admin' ? '/admin/dashboard' : '/student/dashboard';
+        
+        setIsLoading(false);
+        return { success: true, redirectTo };
       }
 
-      return { success: true, redirectTo };
-    } catch (error) {
-      return { success: false, error };
-    } finally {
       setIsLoading(false);
+      return { success: false, error: new Error('No user data received') };
+    } catch (error) {
+      setIsLoading(false);
+      return { success: false, error };
     }
   };
 
@@ -218,37 +137,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        setIsLoading(false);
         return { success: false, error };
       }
 
       if (data.user) {
-        // Session will be updated via onAuthStateChange
-        // New users are always students initially
         const redirectTo = '/student/dashboard';
+        setIsLoading(false);
         
         return { 
           success: true, 
-          needsEmailConfirmation: false,
+          needsEmailConfirmation: !data.session,
           user: data.user,
           redirectTo
         };
       }
 
+      setIsLoading(false);
       return { success: false, error: new Error('User creation failed') };
     } catch (error) {
-      return { success: false, error };
-    } finally {
       setIsLoading(false);
+      return { success: false, error };
     }
   };
 
   const signOut = async () => {
     try {
       setIsLoading(true);
-      await supabase.auth.signOut();
-      // State will be updated via onAuthStateChange
+      
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Sign out error:', error);
+      }
+      
+      // Clear state immediately regardless of error
+      setUser(null);
+      setRole(null);
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('Sign out catch error:', error);
+      // Still clear state even if there was an error
+      setUser(null);
+      setRole(null);
     } finally {
       setIsLoading(false);
     }
@@ -256,14 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
-    session,
-    isAdmin,
+    role,
     isLoading,
+    isAdmin,
     isInitialized,
     signIn,
     signUp,
-    signOut,
-    refreshSession
+    signOut
   };
 
   return (

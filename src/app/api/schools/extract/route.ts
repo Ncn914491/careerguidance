@@ -104,13 +104,13 @@ export async function POST() {
       );
     }
 
-    let extractedSchools: string[] = [];
+    const extractedSchools: string[] = [];
     let processedFiles = 0;
 
     // Process each week's PDF files
     for (const week of weeks || []) {
-      if (week.week_files && week.week_files.length > 0) {
-        for (const file of week.week_files) {
+      if ((week as any).week_files && (week as any).week_files.length > 0) {
+        for (const file of (week as any).week_files) {
           try {
             // Extract text from PDF (mock implementation)
             const pdfText = await extractTextFromPDF(file.file_url);
@@ -147,14 +147,14 @@ export async function POST() {
         .from('schools')
         .select('name');
       
-      const existingNames = new Set(existingSchools?.map(s => s.name) || []);
+      const existingNames = new Set(existingSchools?.map(s => (s as any).name) || []);
       
       const newSchools = schoolsToInsert.filter(school => 
         !existingNames.has(school.name)
       );
       
       if (newSchools.length > 0) {
-        const { data: insertedSchools, error: insertError } = await supabase
+        const { data: insertedSchools, error: insertError } = await (supabase as any)
           .from('schools')
           .insert(newSchools)
           .select();

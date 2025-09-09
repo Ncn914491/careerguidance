@@ -28,11 +28,12 @@ export function ManageGroups() {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch('/api/groups');
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data.groups || []);
+      const { api } = await import('@/lib/api');
+      const data = await api.get('/api/groups');
+      if (data.error) {
+        throw new Error(data.error);
       }
+      setGroups(data.groups || []);
     } catch (error) {
       console.error('Error fetching groups:', error);
       setMessage({ type: 'error', text: 'Failed to load groups' });
@@ -50,18 +51,18 @@ export function ManageGroups() {
     }
 
     try {
-      const url = editingGroup ? `/api/groups/${editingGroup.id}` : '/api/groups';
-      const method = editingGroup ? 'PUT' : 'POST';
+      const { api } = await import('@/lib/api');
+      let data;
       
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      if (editingGroup) {
+        data = await api.put(`/api/groups/${editingGroup.id}`, formData);
+      } else {
+        data = await api.post('/api/groups', formData);
+      }
 
-      if (response.ok) {
+      if (data.error) {
+        setMessage({ type: 'error', text: data.error || 'Operation failed' });
+      } else {
         setMessage({ 
           type: 'success', 
           text: editingGroup ? 'Group updated successfully' : 'Group created successfully' 
@@ -70,9 +71,6 @@ export function ManageGroups() {
         setEditingGroup(null);
         setIsCreating(false);
         fetchGroups();
-      } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Operation failed' });
       }
     } catch (error) {
       console.error('Error saving group:', error);
@@ -95,16 +93,14 @@ export function ManageGroups() {
     }
 
     try {
-      const response = await fetch(`/api/groups/${groupId}`, {
-        method: 'DELETE',
-      });
+      const { api } = await import('@/lib/api');
+      const data = await api.delete(`/api/groups/${groupId}`);
 
-      if (response.ok) {
+      if (data.error) {
+        setMessage({ type: 'error', text: data.error || 'Failed to delete group' });
+      } else {
         setMessage({ type: 'success', text: 'Group deleted successfully' });
         fetchGroups();
-      } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.error || 'Failed to delete group' });
       }
     } catch (error) {
       console.error('Error deleting group:', error);
