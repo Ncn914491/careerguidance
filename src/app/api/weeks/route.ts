@@ -140,9 +140,21 @@ export async function POST(request: NextRequest) {
         const timestamp = Date.now();
         const fileName = `week-${weekNum}/${timestamp}-${file.name}`;
         
-        // Upload to Supabase Storage
+        // Determine correct bucket based on file type
+        let bucketName: string;
+        if (file.type.startsWith('image/')) {
+          bucketName = 'week-photos';
+        } else if (file.type.startsWith('video/')) {
+          bucketName = 'week-videos';
+        } else if (file.type === 'application/pdf') {
+          bucketName = 'week-pdfs';
+        } else {
+          continue; // Skip unsupported file types
+        }
+        
+        // Upload to appropriate Supabase Storage bucket
         const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-          .from('week-files')
+          .from(bucketName)
           .upload(fileName, file);
 
         if (uploadError) {
@@ -152,7 +164,7 @@ export async function POST(request: NextRequest) {
 
         // Get public URL
         const { data: { publicUrl } } = supabaseAdmin.storage
-          .from('week-files')
+          .from(bucketName)
           .getPublicUrl(fileName);
 
         // Determine file type
