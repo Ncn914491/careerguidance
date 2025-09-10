@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { Database } from '@/lib/database.types'
 
 // Server-side Supabase client with service role for admin operations
-const supabaseAdmin = createClient<Database>(
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
     auth: {
@@ -32,17 +32,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Check user role from database
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (profileError) {
+    if (profileError || !profile) {
       return NextResponse.json({ error: 'Failed to get user profile' }, { status: 500 });
     }
 
-    const isAdmin = (profile as any)?.role === 'admin';
+    const isAdmin = profile.role === 'admin';
 
     // If user is admin, return all requests; if student, return only their requests
     let query = supabaseAdmin
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         reason: reason.trim(),
         status: 'pending'
-      } as any)
+      })
       .select()
       .single()
 
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     // Update user role to pending_admin (this will be handled by the database trigger)
     // But we'll also do it explicitly here for immediate consistency
-    const { error: roleError } = await (supabaseAdmin as any)
+    const { error: roleError } = await supabaseAdmin
       .from('profiles')
       .update({ role: 'pending_admin' })
       .eq('id', user.id)

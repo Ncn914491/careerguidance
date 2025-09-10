@@ -2,14 +2,11 @@
 
 import { useState, lazy } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { 
   DocumentArrowUpIcon,
   UserGroupIcon,
   ChartBarIcon,
-  UserPlusIcon,
-  Cog6ToothIcon
+  UserPlusIcon
 } from '@heroicons/react/24/outline';
 import { LazyWrapper } from '@/components/ui/LazyWrapper';
 
@@ -23,7 +20,6 @@ type TabType = 'overview' | 'upload' | 'groups' | 'requests' | 'stats';
 
 export function AdminDashboard() {
   const { user } = useAuth();
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   const tabs = [

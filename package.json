@@ -2,16 +2,15 @@
   "name": "career-guidance-website",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit",
-    "setup": "node scripts/setup-system.js",
-    "clear-cache": "node scripts/clear-cache.js",
-    "vercel:build": "npm run build",
-    "postinstall": "echo 'Skipping type-check for deployment'"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

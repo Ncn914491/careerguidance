@@ -48,10 +48,10 @@ export default function AuthCallback() {
         } else {
           throw new Error('Invalid confirmation link');
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Auth callback error:', error);
         setStatus('error');
-        setMessage(error.message || 'Failed to confirm email');
+        setMessage((error instanceof Error ? error.message : String(error)) || 'Failed to confirm email');
         
         // Redirect to login after error
         setTimeout(() => {

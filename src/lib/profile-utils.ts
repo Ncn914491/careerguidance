@@ -1,5 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase-admin';
 import { type UserRole, type TablesInsert, type TablesUpdate } from '@/types/database';
 
 /**
@@ -27,18 +28,20 @@ export async function ensureProfileExists(user: User) {
       role: 'student'
     };
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabaseAdmin as any)
       .from('profiles')
-      .insert(profileData);
+      .insert([profileData]);
 
     if (error) {
       console.error('Error creating profile:', error);
       
       // Try using the database function as fallback
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: functionError } = await (supabase as any).rpc('ensure_profile_exists', {
         user_id: user.id,
         user_email: user.email || '',
-        user_name: user.user_metadata?.full_name as string || null
+        user_name: (user.user_metadata?.full_name as string) || null
       });
 
       if (functionError) {
@@ -71,13 +74,14 @@ export async function addUserToDefaultGroups(userId: string) {
     }
 
     // Add user to each default group
-    const memberships: TablesInsert<'group_members'>[] = defaultGroups.map(group => ({
+    const memberships: TablesInsert<'group_members'>[] = defaultGroups.map((group: { id: string }) => ({
       group_id: group.id,
       user_id: userId,
       role: 'member'
     }));
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabaseAdmin as any)
       .from('group_members')
       .insert(memberships);
 
@@ -127,7 +131,8 @@ export async function updateUserProfile(userId: string, updates: {
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabaseAdmin as any)
       .from('profiles')
       .update(updateData)
       .eq('id', userId);

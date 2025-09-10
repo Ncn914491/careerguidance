@@ -95,7 +95,7 @@ export async function PUT(
       .eq('id', user.id)
       .single();
 
-    if (profileError || (profile as any)?.role !== 'admin') {
+    if (profileError || profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 
@@ -106,9 +106,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Name and description are required' }, { status: 400 });
     }
 
-    const { data: group, error } = await supabase
+    const updateData = { name, description };
+    
+    const { data: group, error } = await supabaseAdmin
       .from('groups')
-      .update({ name, description })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single();
@@ -150,7 +152,7 @@ export async function DELETE(
       .eq('id', user.id)
       .single();
 
-    if (profileError || (profile as any)?.role !== 'admin') {
+    if (profileError || profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 

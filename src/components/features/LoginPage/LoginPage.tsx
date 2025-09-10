@@ -73,8 +73,8 @@ export function LoginPage() {
           setLoading(false);
         }
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (error: unknown) {
+      setError((error instanceof Error ? error.message : String(error)) || 'An error occurred');
       setLoading(false);
     }
   };

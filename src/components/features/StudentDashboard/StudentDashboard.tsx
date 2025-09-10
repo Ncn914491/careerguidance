@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, lazy } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { 
   CalendarDaysIcon, 
   UserGroupIcon, 
@@ -21,7 +19,6 @@ const StudentStats = lazy(() => import('./StudentStats').then(m => ({ default: m
 type TabType = 'overview' | 'groups' | 'weeks' | 'stats';
 
 export function StudentDashboard() {
-  const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 

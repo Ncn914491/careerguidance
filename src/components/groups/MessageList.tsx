@@ -1,15 +1,9 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Database } from '@/lib/supabase'
+import { GroupMessageWithProfile } from '@/types/database'
 
-type Message = Database['public']['Tables']['messages']['Row'] & {
-  profiles: {
-    full_name: string | null
-    avatar_url: string | null
-    email?: string | null
-  } | null
-}
+type Message = GroupMessageWithProfile
 
 interface MessageListProps {
   messages: Message[]

@@ -80,7 +80,7 @@ export default function RequestAdminPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white mb-4">Admin Request Pending</h1>
-          <p className="text-gray-300 mb-6">Your admin request is currently being reviewed. You'll be notified once it's processed.</p>
+          <p className="text-gray-300 mb-6">Your admin request is currently being reviewed. You&apos;ll be notified once it&apos;s processed.</p>
           <div className="flex gap-4 justify-center">
             <a 
               href="/student" 

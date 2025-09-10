@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profileError || (profile as any)?.role !== 'admin') {
+    if (profileError || profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Admin privileges required to create groups' }, { status: 403 });
     }
     

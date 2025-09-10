@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { api } from '@/lib/api';
 
 interface ChatMessage {
   id: string;
@@ -15,7 +14,7 @@ interface ChatMessage {
 
 
 export default function AskAI() {
-  const { user } = useAuth();
+  const { } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -287,7 +286,7 @@ export default function AskAI() {
                             onClick={() => setInputMessage(prompt)}
                             className="block w-full text-left text-xs text-purple-300 hover:text-purple-200 bg-glass-dark hover:bg-glass rounded px-2 py-1 transition-colors"
                           >
-                            "                            &quot;{prompt}&quot;"
+                            &quot;{prompt}&quot;
                           </button>
                         ))}
                       </div>

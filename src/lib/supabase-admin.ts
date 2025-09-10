@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from './supabase'
+import type { Database } from './database.types'
 
 // Admin client for server-side operations with elevated privileges
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

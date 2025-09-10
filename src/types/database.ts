@@ -255,7 +255,7 @@ export type UserRole = 'student' | 'admin'
 export type GroupMemberRole = 'member' | 'admin'
 
 // API response types
-export type ApiResponse<T = any> = {
+export type ApiResponse<T = unknown> = {
   data?: T
   error?: string
   status?: number

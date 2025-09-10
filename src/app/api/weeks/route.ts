@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { type Profile } from '@/types/database';
 
 // Use admin client to bypass RLS issues
 const supabaseAdmin = createClient(
@@ -15,7 +14,7 @@ const supabaseAdmin = createClient(
   }
 );
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Weeks are publicly accessible - no authentication required
     // Use admin client to bypass RLS issues until policies are fixed
@@ -153,7 +152,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Upload to appropriate Supabase Storage bucket
-        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+        const { error: uploadError } = await supabaseAdmin.storage
           .from(bucketName)
           .upload(fileName, file);
 

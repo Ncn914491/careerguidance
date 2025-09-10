@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRealtimeMessages } from '@/lib/hooks/useRealtimeMessages'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
@@ -21,7 +21,7 @@ interface GroupChatAreaProps {
   isAdmin?: boolean
 }
 
-export default function GroupChatArea({ group, currentUserId, isAdmin = false }: GroupChatAreaProps) {
+export default function GroupChatArea({ group, currentUserId }: GroupChatAreaProps) {
   const { messages, loading: messagesLoading, error: messagesError, sendMessage } = useRealtimeMessages(group?.id || null)
   const [showInfo, setShowInfo] = useState(false)
 
@@ -50,7 +50,7 @@ export default function GroupChatArea({ group, currentUserId, isAdmin = false }:
           <UserGroupIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-white mb-2">Join Group to Chat</h3>
           <p className="text-gray-300 max-w-md">
-            You need to join "{group.name}" to participate in the conversation.
+            You need to join &quot;{group.name}&quot; to participate in the conversation.
           </p>
         </div>
       </div>

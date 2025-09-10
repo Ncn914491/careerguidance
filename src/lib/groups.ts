@@ -19,13 +19,15 @@ export async function addUserToDefaultGroups(userId: string) {
     }
 
     // Add user to the default group
-    const { error: membershipError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: membershipError } = await (supabase as any)
       .from('group_members')
       .insert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         group_id: (defaultGroup as any).id,
         user_id: userId,
         role: 'member' // Assuming a default role for new members
-      } as any)
+      })
 
     if (membershipError) {
       console.error('Error adding user to default group:', membershipError)

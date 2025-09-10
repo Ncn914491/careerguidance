@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { supabaseAdmin } from './supabase-admin'
+import type { Database } from './database.types'
 
 // Admin user credentials for seeding and bypass
 export const ADMIN_CREDENTIALS = {
@@ -12,14 +12,17 @@ export const ADMIN_CREDENTIALS = {
  */
 export async function createUserProfile(userId: string, email: string, fullName?: string) {
   try {
-    const { error } = await supabase
+    const profileData: Database['public']['Tables']['profiles']['Insert'] = {
+      id: userId,
+      email,
+      full_name: fullName,
+      role: 'student' // Default role for new users
+    };
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabaseAdmin as any)
       .from('profiles')
-      .insert({
-        id: userId,
-        email,
-        full_name: fullName,
-        role: 'student' // Default role for new users
-      } as any)
+      .insert(profileData)
 
     if (error) {
       console.error('Error creating user profile:', error)

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profileError || (profile as any)?.role !== 'admin') {
+    if (profileError || profile?.role !== 'admin') {
       return NextResponse.json({ error: 'Admin privileges required' }, { status: 403 });
     }
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         .from('school_visits')
         .select('*', { count: 'exact', head: true });
       totalVisits = count || 0;
-    } catch (error) {
+    } catch {
       totalVisits = 0; // Fallback if table doesn't exist
     }
 
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
         .from('group_members')
         .select('user_id', { count: 'exact', head: true });
       studentsInGroups = count || 0;
-    } catch (error) {
+    } catch {
       studentsInGroups = 0; // Fallback if table doesn't exist
     }
 

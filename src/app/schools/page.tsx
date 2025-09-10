@@ -179,7 +179,7 @@ export default function SchoolsPage() {
             <BuildingOfficeIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">No Schools Found</h3>
             <p className="text-gray-300 mb-4">
-              No schools have been recorded yet. Upload PDFs with school information and click "Extract from PDFs" to populate this list.
+              No schools have been recorded yet. Upload PDFs with school information and click &quot;Extract from PDFs&quot; to populate this list.
             </p>
             {weeks.length > 0 && (
               <p className="text-sm text-gray-400">

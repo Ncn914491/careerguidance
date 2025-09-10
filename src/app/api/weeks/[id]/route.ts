@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { type Profile } from '@/types/database';
 
 // Use admin client for database operations
 const supabaseAdmin = createClient(
