@@ -18,8 +18,8 @@ const supabaseAdmin = createClient(
 export async function GET(request: NextRequest) {
   try {
     // Weeks are publicly accessible - no authentication required
-    // Use regular client since we fixed RLS policies to allow public access
-    const { data: weeks, error } = await supabase
+    // Use admin client to bypass RLS issues until policies are fixed
+    const { data: weeks, error } = await supabaseAdmin
       .from('weeks')
       .select(`
         *,

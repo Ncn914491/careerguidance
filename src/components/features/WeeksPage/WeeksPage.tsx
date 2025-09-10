@@ -271,7 +271,13 @@ export default function WeeksPage() {
         }
         
         const data = await response.json();
-        console.log('Weeks data received:', data);
+        console.log('=== WEEKS API DEBUG ===');
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        console.log('Raw data:', data);
+        console.log('Weeks array:', data.weeks);
+        console.log('Weeks length:', data.weeks?.length || 0);
+        console.log('========================');
         setWeeks(data.weeks || []);
       } catch (err) {
         console.error('Error fetching weeks:', err);
