@@ -188,7 +188,7 @@ export default function AIChatPage() {
             </div>
             <div>
               <h2 className="font-semibold text-white">AI Career Assistant</h2>
-              <p className="text-xs text-gray-300">Powered by Gemini 1.5 Flash</p>
+              <p className="text-xs text-gray-300">Powered by Gemini 2.5 Flash</p>
             </div>
           </div>
           <button

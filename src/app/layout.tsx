@@ -19,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Career Guidance Project",
   description: "A comprehensive web application for showcasing educational outreach activities, facilitating team collaboration, and providing AI-powered assistance to students.",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/apple-icon.svg',
+  },
 };
 
 export default function RootLayout({

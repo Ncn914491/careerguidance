@@ -629,7 +629,23 @@ function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps
 }
 
 export default function WeeksPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  
+  // Helper function to get auth headers
+  const getAuthHeaders = async () => {
+    if (!user) throw new Error('User not authenticated');
+    
+    // Get the session token
+    const { data: { session }, error } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+    if (error || !session?.access_token) {
+      throw new Error('Failed to get session token');
+    }
+    
+    return {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    };
+  };
   
   // Use simple state instead of complex data fetching hook
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -710,15 +726,14 @@ export default function WeeksPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingWeek || !isAdmin) return;
+    if (!editingWeek || !isAdmin || !user) return;
 
     setIsEditing(true);
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/weeks/${editingWeek.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           title: editForm.title,
           description: editForm.description
@@ -743,14 +758,16 @@ export default function WeeksPage() {
   };
 
   const handleDeleteWeek = async (weekId: string) => {
-    if (!isAdmin || !confirm('Are you sure you want to delete this week? This will also delete all associated files and cannot be undone.')) {
+    if (!isAdmin || !user || !confirm('Are you sure you want to delete this week? This will also delete all associated files and cannot be undone.')) {
       return;
     }
 
     setIsDeleting(weekId);
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/weeks/${weekId}`, {
         method: 'DELETE',
+        headers,
       });
 
       if (!response.ok) {
