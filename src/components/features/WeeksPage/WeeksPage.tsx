@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Modal from '@/components/ui/Modal';
 import FileViewer from '@/components/ui/FileViewer';
+import { api } from '@/lib/api';
 import { PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 
 interface WeekFile {
@@ -631,22 +632,6 @@ function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps
 export default function WeeksPage() {
   const { isAdmin, user } = useAuth();
   
-  // Helper function to get auth headers
-  const getAuthHeaders = async () => {
-    if (!user) throw new Error('User not authenticated');
-    
-    // Get the session token
-    const { data: { session }, error } = await (await import('@/lib/supabase')).supabase.auth.getSession();
-    if (error || !session?.access_token) {
-      throw new Error('Failed to get session token');
-    }
-    
-    return {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json',
-    };
-  };
-  
   // Use simple state instead of complex data fetching hook
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [loading, setLoading] = useState(true);
@@ -671,13 +656,6 @@ export default function WeeksPage() {
         }
         
         const data = await response.json();
-        console.log('=== WEEKS API DEBUG ===');
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
-        console.log('Raw data:', data);
-        console.log('Weeks array:', data.weeks);
-        console.log('Weeks length:', data.weeks?.length || 0);
-        console.log('========================');
         setWeeks(data.weeks || []);
       } catch (err) {
         console.error('Error fetching weeks:', err);
@@ -730,28 +708,21 @@ export default function WeeksPage() {
 
     setIsEditing(true);
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/weeks/${editingWeek.id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          title: editForm.title,
-          description: editForm.description
-        }),
+      const data = await api.put(`/api/weeks/${editingWeek.id}`, {
+        title: editForm.title,
+        description: editForm.description
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update week');
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       // Refetch weeks to get updated data
       refetchWeeks();
-
       setEditingWeek(null);
-      // Error is now handled by the hook
     } catch (err) {
       console.error('Failed to update week:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update week');
     } finally {
       setIsEditing(false);
     }
@@ -764,22 +735,17 @@ export default function WeeksPage() {
 
     setIsDeleting(weekId);
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/weeks/${weekId}`, {
-        method: 'DELETE',
-        headers,
-      });
+      const data = await api.delete(`/api/weeks/${weekId}`);
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete week');
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       // Refetch weeks to get updated data
       refetchWeeks();
-      // Error is now handled by the hook
     } catch (err) {
       console.error('Failed to delete week:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete week');
     } finally {
       setIsDeleting(null);
     }

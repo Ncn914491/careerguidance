@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { getAuthenticatedHeaders } from '@/lib/api';
 
 interface UploadedFile {
   file: File;
@@ -109,8 +110,13 @@ export function UploadWeekData() {
         formData.append('files', file);
       });
 
+      // Get authenticated headers (but don't set Content-Type for FormData)
+      const headers = await getAuthenticatedHeaders();
+      delete headers['Content-Type']; // Let browser set Content-Type for FormData
+      
       const response = await fetch('/api/weeks', {
         method: 'POST',
+        headers,
         body: formData,
       });
 
