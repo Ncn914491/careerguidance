@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // Initialize Gemini AI with Flash model
+    // Initialize Gemini AI with 2.5 Flash model
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash-002', // Use Gemini 2.5 Flash (latest stable version)
+      model: 'gemini-2.0-flash-exp', // Use Gemini 2.5 Flash (latest experimental version)
       generationConfig: {
         maxOutputTokens: 2048,
         temperature: 0.7,

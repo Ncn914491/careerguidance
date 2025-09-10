@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { type Profile } from '@/types/database';
+
+// Use admin client for database operations
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 // PUT - Update week details (admin only)
 export async function PUT(
@@ -20,8 +33,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Check user role from database
-    const { data: profile, error: profileError } = await supabase
+    // Check user role from database using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -38,7 +51,7 @@ export async function PUT(
     }
 
     const params = await context.params;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('weeks')
       .update({
         title: title.trim(),
@@ -79,8 +92,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Check user role from database
-    const { data: profile, error: profileError } = await supabase
+    // Check user role from database using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -93,7 +106,7 @@ export async function DELETE(
     const params = await context.params;
     
     // First, get all files associated with this week
-    const { data: weekFiles, error: filesError } = await supabase
+    const { data: weekFiles, error: filesError } = await supabaseAdmin
       .from('week_files')
       .select('file_url')
       .eq('week_id', params.id);
@@ -113,18 +126,32 @@ export async function DELETE(
         return pathParts.slice(5).join('/');
       });
 
-      const { error: storageError } = await supabase.storage
-        .from('weeks')
-        .remove(filePaths);
+      // Try to delete from appropriate buckets (week-photos, week-pdfs, week-videos)
+      const buckets = ['week-photos', 'week-pdfs', 'week-videos'];
+      for (const bucket of buckets) {
+        const bucketFiles = filePaths.filter(path => {
+          // Determine bucket based on file path or type
+          if (bucket === 'week-photos' && (path.includes('.jpg') || path.includes('.png') || path.includes('.jpeg'))) return true;
+          if (bucket === 'week-pdfs' && path.includes('.pdf')) return true;
+          if (bucket === 'week-videos' && (path.includes('.mp4') || path.includes('.mov'))) return true;
+          return false;
+        });
+        
+        if (bucketFiles.length > 0) {
+          const { error: storageError } = await supabaseAdmin.storage
+            .from(bucket)
+            .remove(bucketFiles);
 
-      if (storageError) {
-        console.warn('Error deleting files from storage:', storageError);
-        // Continue with database deletion even if storage deletion fails
+          if (storageError) {
+            console.warn(`Error deleting files from ${bucket}:`, storageError);
+            // Continue with database deletion even if storage deletion fails
+          }
+        }
       }
     }
 
     // Delete week files records
-    const { error: deleteFilesError } = await supabase
+    const { error: deleteFilesError } = await supabaseAdmin
       .from('week_files')
       .delete()
       .eq('week_id', params.id);
@@ -135,7 +162,7 @@ export async function DELETE(
     }
 
     // Delete the week record
-    const { error: deleteWeekError } = await supabase
+    const { error: deleteWeekError } = await supabaseAdmin
       .from('weeks')
       .delete()
       .eq('id', params.id);
