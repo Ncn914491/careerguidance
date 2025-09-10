@@ -25,6 +25,132 @@ interface Week {
 }
 
 
+// Compact WeekWidget component for grid display
+interface WeekWidgetProps {
+  week: Week;
+  isAdmin: boolean;
+  onEdit: (week: Week) => void;
+  onDelete: (weekId: string) => void;
+  isDeleting: boolean;
+  onClick: () => void;
+}
+
+function WeekWidget({ week, isAdmin, onEdit, onDelete, isDeleting, onClick }: WeekWidgetProps) {
+  const photos = week.week_files.filter(f => f.file_type === 'photo');
+  const pdfs = week.week_files.filter(f => f.file_type === 'pdf');
+  const videos = week.week_files.filter(f => f.file_type === 'video');
+  
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  
+  return (
+    <div className="bg-glass backdrop-blur-md rounded-xl border border-glass shadow-glass overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group" onClick={onClick}>
+      {/* Preview Image */}
+      <div className="relative h-48 overflow-hidden">
+        {photos.length > 0 ? (
+          <img
+            src={photos[0]?.file_url}
+            alt={`Week ${week.week_number} preview`}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCI+V2VlayAke3dlZWsud2Vla19udW1iZXJ9PC90ZXh0Pgo8L3N2Zz4=';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+            <div className="text-center">
+              <svg className="w-12 h-12 mx-auto text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-gray-400 text-sm">No Preview</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Admin Controls Overlay */}
+        {isAdmin && (
+          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(week);
+              }}
+              className="p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
+              title="Edit week"
+            >
+              <PencilIcon className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(week.id);
+              }}
+              disabled={isDeleting}
+              className="p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors disabled:opacity-50"
+              title="Delete week"
+            >
+              {isDeleting ? (
+                <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+              ) : (
+                <TrashIcon className="w-3 h-3" />
+              )}
+            </button>
+          </div>
+        )}
+        
+        {/* File Count Badge */}
+        <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
+          {week.week_files.length} files
+        </div>
+      </div>
+      
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">
+          Week {week.week_number}
+        </h3>
+        <h4 className="text-sm font-medium text-gray-300 mb-2 line-clamp-2">
+          {week.title}
+        </h4>
+        <p className="text-xs text-gray-400 mb-3">{formatDate(week.created_at)}</p>
+        
+        {/* File Type Summary */}
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          {photos.length > 0 && (
+            <div className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{photos.length}</span>
+            </div>
+          )}
+          {pdfs.length > 0 && (
+            <div className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>{pdfs.length}</span>
+            </div>
+          )}
+          {videos.length > 0 && (
+            <div className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span>{videos.length}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Enhanced WeekCard component with slideshow
 interface WeekCardProps {
   week: Week;
@@ -32,6 +158,264 @@ interface WeekCardProps {
   onEdit: (week: Week) => void;
   onDelete: (weekId: string) => void;
   isDeleting: boolean;
+}
+
+// Enhanced WeekModal component
+interface WeekModalProps {
+  week: Week;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function WeekModal({ week, isOpen, onClose }: WeekModalProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [selectedPdf, setSelectedPdf] = useState<WeekFile | null>(null);
+  const [activeTab, setActiveTab] = useState<'photos' | 'pdfs' | 'videos'>('photos');
+  
+  const photos = week.week_files.filter(f => f.file_type === 'photo');
+  const pdfs = week.week_files.filter(f => f.file_type === 'pdf');
+  const videos = week.week_files.filter(f => f.file_type === 'video');
+  
+  // Auto slideshow functionality
+  useEffect(() => {
+    if (isAutoPlay && photos.length > 1 && activeTab === 'photos') {
+      const interval = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => 
+          prevIndex === photos.length - 1 ? 0 : prevIndex + 1
+        );
+      }, 4000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [isAutoPlay, photos.length, activeTab]);
+  
+  const nextImage = () => {
+    setCurrentImageIndex(currentImageIndex === photos.length - 1 ? 0 : currentImageIndex + 1);
+  };
+  
+  const prevImage = () => {
+    setCurrentImageIndex(currentImageIndex === 0 ? photos.length - 1 : currentImageIndex - 1);
+  };
+  
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+  
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Week ${week.week_number}: ${week.title}`}
+      size="xl"
+    >
+      <div className="space-y-6">
+        {/* Description */}
+        {week.description && (
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <p className="text-gray-300 leading-relaxed">{week.description}</p>
+          </div>
+        )}
+        
+        {/* File Type Tabs */}
+        <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-lg">
+          {photos.length > 0 && (
+            <button
+              onClick={() => setActiveTab('photos')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                activeTab === 'photos' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Photos ({photos.length})
+            </button>
+          )}
+          {pdfs.length > 0 && (
+            <button
+              onClick={() => setActiveTab('pdfs')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                activeTab === 'pdfs' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              Documents ({pdfs.length})
+            </button>
+          )}
+          {videos.length > 0 && (
+            <button
+              onClick={() => setActiveTab('videos')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                activeTab === 'videos' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Videos ({videos.length})
+            </button>
+          )}
+        </div>
+        
+        {/* Photo Slideshow */}
+        {activeTab === 'photos' && photos.length > 0 && (
+          <div className="relative">
+            <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{aspectRatio: '16/10'}}>
+              <img
+                src={photos[currentImageIndex]?.file_url}
+                alt={photos[currentImageIndex]?.file_name}
+                className="w-full h-full object-contain" // Changed from object-cover to object-contain and made smaller
+                style={{maxHeight: '400px'}} // Reduced height
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDQwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOUNBM0FGIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCI+SW1hZ2UgTm90IEF2YWlsYWJsZTwvdGV4dD4KPHN2Zz4=';
+                }}
+              />
+              
+              {/* Navigation Controls */}
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                  >
+                    <ChevronLeftIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                  >
+                    <ChevronRightIcon className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Auto-play Control */}
+                  <button
+                    onClick={() => setIsAutoPlay(!isAutoPlay)}
+                    className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all"
+                    title={isAutoPlay ? "Pause slideshow" : "Play slideshow"}
+                  >
+                    {isAutoPlay ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}
+                  </button>
+                  
+                  {/* Image Indicators */}
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    {photos.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              {/* Image Counter */}
+              <div className="absolute top-4 right-4 bg-black/50 text-white px-2 py-1 rounded text-sm">
+                {currentImageIndex + 1} / {photos.length}
+              </div>
+            </div>
+            
+            {/* Image Filename */}
+            <p className="text-center text-gray-400 text-sm mt-2">
+              {photos[currentImageIndex]?.file_name}
+            </p>
+          </div>
+        )}
+        
+        {/* PDF Viewer */}
+        {activeTab === 'pdfs' && pdfs.length > 0 && (
+          <div className="grid grid-cols-1 gap-4">
+            {pdfs.map((pdf) => (
+              <div key={pdf.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <p className="text-white font-medium">{pdf.file_name}</p>
+                      <p className="text-gray-400 text-sm">{Math.round((pdf.file_size || 0) / 1024)} KB</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedPdf(pdf)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+                  >
+                    View Full PDF
+                  </button>
+                </div>
+                
+                {/* PDF Preview */}
+                <div className="bg-white rounded overflow-hidden" style={{height: '500px'}}> {/* Increased height */}
+                  <iframe
+                    src={`${pdf.file_url}#toolbar=0&navpanes=0&scrollbar=1`}
+                    className="w-full h-full"
+                    title={`${pdf.file_name} preview`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* Video Player */}
+        {activeTab === 'videos' && videos.length > 0 && (
+          <div className="grid grid-cols-1 gap-4">
+            {videos.map((video) => (
+              <div key={video.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                <div className="flex items-center space-x-3 mb-3">
+                  <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <div>
+                    <p className="text-white font-medium">{video.file_name}</p>
+                    <p className="text-gray-400 text-sm">{Math.round((video.file_size || 0) / 1024)} KB</p>
+                  </div>
+                </div>
+                <div className="bg-black rounded overflow-hidden aspect-video">
+                  <video
+                    src={video.file_url}
+                    controls
+                    className="w-full h-full"
+                    preload="metadata"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Enhanced PDF Modal */}
+      {selectedPdf && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedPdf(null)}
+          title={selectedPdf.file_name}
+          size="full" // Use full size for better PDF viewing
+        >
+          <div className="bg-white rounded-lg" style={{height: '80vh', minHeight: '600px'}}> {/* Increased size */}
+            <iframe
+              src={`${selectedPdf.file_url}#toolbar=1&navpanes=1&scrollbar=1`}
+              className="w-full h-full rounded-lg"
+              title={selectedPdf.file_name}
+            />
+          </div>
+        </Modal>
+      )}
+    </Modal>
+  );
 }
 
 function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps) {
@@ -479,103 +863,28 @@ export default function WeeksPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {weeks.map((week) => (
-            <WeekCard key={week.id} week={week} isAdmin={isAdmin} onEdit={handleEditWeek} onDelete={handleDeleteWeek} isDeleting={isDeleting === week.id} />
+            <WeekWidget 
+              key={week.id} 
+              week={week} 
+              isAdmin={isAdmin} 
+              onEdit={handleEditWeek} 
+              onDelete={handleDeleteWeek} 
+              isDeleting={isDeleting === week.id}
+              onClick={() => setSelectedWeek(week)}
+            />
           ))}
         </div>
       )}
 
-      {/* Week Files Modal */}
+      {/* Enhanced Week Modal with Slideshow */}
       {selectedWeek && (
-        <Modal
+        <WeekModal 
+          week={selectedWeek}
           isOpen={true}
           onClose={closeWeekModal}
-          title={`Week ${selectedWeek.week_number}: ${selectedWeek.title}`}
-          size="xl"
-        >
-          <div className="space-y-6">
-            {selectedWeek.description && (
-              <div className="bg-gray-800 rounded-lg p-4">
-                <p className="text-gray-300">{selectedWeek.description}</p>
-              </div>
-            )}
-
-            {selectedWeek.week_files.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <p className="text-gray-400">No files available for this week.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* File Navigation */}
-                {selectedWeek.week_files.length > 1 && (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedWeek.week_files.map((file, index) => (
-                      <button
-                        key={file.id}
-                        onClick={() => setSelectedFileIndex(index)}
-                        className={`
-                          px-3 py-2 rounded-lg text-sm transition-colors flex items-center space-x-2
-                          ${selectedFileIndex === index 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }
-                        `}
-                      >
-                        {getFileTypeIcon(file.file_type)}
-                        <span className="truncate max-w-32">{file.file_name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Current File Viewer */}
-                {selectedWeek.week_files[selectedFileIndex] && (
-                  <FileViewer 
-                    file={selectedWeek.week_files[selectedFileIndex]} 
-                    onClose={closeWeekModal}
-                  />
-                )}
-
-                {/* Navigation Arrows */}
-                {selectedWeek.week_files.length > 1 && (
-                  <div className="flex justify-between">
-                    <button
-                      onClick={() => setSelectedFileIndex(Math.max(0, selectedFileIndex - 1))}
-                      disabled={selectedFileIndex === 0}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      <span>Previous</span>
-                    </button>
-                    
-                    <span className="flex items-center text-gray-400 text-sm">
-                      {selectedFileIndex + 1} of {selectedWeek.week_files.length}
-                    </span>
-                    
-                    <button
-                      onClick={() => setSelectedFileIndex(Math.min(selectedWeek.week_files.length - 1, selectedFileIndex + 1))}
-                      disabled={selectedFileIndex === selectedWeek.week_files.length - 1}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <span>Next</span>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </Modal>
+        />
       )}
 
       {/* Edit Week Modal */}

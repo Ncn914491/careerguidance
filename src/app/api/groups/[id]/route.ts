@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+
+// Use admin client for role checks and admin operations
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 // GET - Get group details
 export async function GET(
@@ -75,8 +88,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Check user role from database
-    const { data: profile, error: profileError } = await supabase
+    // Check user role from database using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -130,8 +143,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Check user role from database
-    const { data: profile, error: profileError } = await supabase
+    // Check user role from database using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -142,7 +155,9 @@ export async function DELETE(
     }
 
     const params = await context.params;
-    const { error } = await supabase.from('groups').delete().eq('id', params.id);
+    
+    // Use admin client for deletion to bypass RLS
+    const { error } = await supabaseAdmin.from('groups').delete().eq('id', params.id);
 
     if (error) {
       console.error('Error deleting group:', error);

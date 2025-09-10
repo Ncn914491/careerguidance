@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+
+// Use admin client to bypass RLS for statistics
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +28,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Check user role from database
-    const { data: profile, error: profileError } = await supabase
+    // Check user role from database using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -27,41 +40,41 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total users count
-    const { count: totalUsers } = await supabase
+    const { count: totalUsers } = await supabaseAdmin
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
     // Get students count
-    const { count: totalStudents } = await supabase
+    const { count: totalStudents } = await supabaseAdmin
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('role', 'student');
 
     // Get admins count
-    const { count: totalAdmins } = await supabase
+    const { count: totalAdmins } = await supabaseAdmin
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('role', 'admin');
 
     // Get total groups count
-    const { count: totalGroups } = await supabase
+    const { count: totalGroups } = await supabaseAdmin
       .from('groups')
       .select('*', { count: 'exact', head: true });
 
     // Get total schools count
-    const { count: totalSchools } = await supabase
+    const { count: totalSchools } = await supabaseAdmin
       .from('schools')
       .select('*', { count: 'exact', head: true });
 
     // Get total weeks count
-    const { count: totalWeeks } = await supabase
+    const { count: totalWeeks } = await supabaseAdmin
       .from('weeks')
       .select('*', { count: 'exact', head: true });
 
     // Get total visits count (assuming this is tracked somewhere)
     let totalVisits = 0;
     try {
-      const { count } = await supabase
+      const { count } = await supabaseAdmin
         .from('school_visits')
         .select('*', { count: 'exact', head: true });
       totalVisits = count || 0;
@@ -72,7 +85,7 @@ export async function GET(request: NextRequest) {
     // Get students in groups count
     let studentsInGroups = 0;
     try {
-      const { count } = await supabase
+      const { count } = await supabaseAdmin
         .from('group_members')
         .select('user_id', { count: 'exact', head: true });
       studentsInGroups = count || 0;

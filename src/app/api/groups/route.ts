@@ -94,6 +94,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
     
+    // Check user role - only admins can create groups
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || (profile as any)?.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin privileges required to create groups' }, { status: 403 });
+    }
+    
     const { name, description } = await request.json()
 
     if (!name) {
