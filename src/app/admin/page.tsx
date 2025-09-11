@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon, AcademicCapIcon, CalendarDaysIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon, CalendarDaysIcon, AcademicCapIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { AuthGuard } from '@/components/ui/AuthGuard';
-import { authenticatedFormFetch, authenticatedFetch, handleApiResponse } from '@/lib/api-client';
+import { authenticatedFetch, authenticatedFormFetch, handleApiResponse } from '@/lib/api-client';
 
 interface UploadedFile {
   file: File;
@@ -14,31 +14,22 @@ interface UploadedFile {
 interface CareerResource {
   id: string;
   title: string;
-  description: string | null;
   resource_type: 'photo' | 'pdf' | 'ppt' | 'text';
-  content_text: string | null;
-  display_order: number;
-  is_featured: boolean;
+  description?: string;
+  content_text?: string;
   created_at: string;
-  career_resource_files: {
+  career_resource_files?: Array<{
     id: string;
     file_name: string;
-    file_type: 'photo' | 'pdf' | 'ppt';
     file_url: string;
-    file_size: number | null;
-  }[];
+  }>;
 }
 
-interface CareerResourceFile {
-  file: File;
-  type: 'photo' | 'pdf' | 'ppt';
-  preview?: string;
-}
 
 function AdminPageContent() {
-  // Tab management
-  const [activeTab, setActiveTab] = useState<'weeks' | 'career-resources'>('weeks');
-  
+  // Tab state
+  const [activeTab, setActiveTab] = useState('weeks');
+
   // Week upload state
   const [weekNumber, setWeekNumber] = useState('');
   const [title, setTitle] = useState('');
@@ -46,16 +37,16 @@ function AdminPageContent() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  
-  // Career resources state
-  const [careerResources, setCareerResources] = useState<CareerResource[]>([]);
+
+  // Career Resources state
   const [resourceTitle, setResourceTitle] = useState('');
-  const [resourceDescription, setResourceDescription] = useState('');
   const [resourceType, setResourceType] = useState<'photo' | 'pdf' | 'ppt' | 'text'>('text');
+  const [resourceDescription, setResourceDescription] = useState('');
   const [resourceContentText, setResourceContentText] = useState('');
-  const [resourceFiles, setResourceFiles] = useState<CareerResourceFile[]>([]);
+  const [resourceFiles, setResourceFiles] = useState<UploadedFile[]>([]);
   const [isResourceUploading, setIsResourceUploading] = useState(false);
-  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [careerResources, setCareerResources] = useState<CareerResource[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
@@ -153,7 +144,7 @@ function AdminPageContent() {
       const { authenticatedFormFetch, handleApiResponse } = await import('@/lib/api-client');
       const response = await authenticatedFormFetch('/api/weeks', formData);
 
-      const result = await handleApiResponse(response);
+      await handleApiResponse(response);
 
       setMessage({ type: 'success', text: 'Week uploaded successfully!' });
       
@@ -186,48 +177,27 @@ function AdminPageContent() {
       case 'pdf':
         return <DocumentIcon className="w-8 h-8 text-red-400" />;
       case 'ppt':
-        return <DocumentIcon className="w-8 h-8 text-orange-400" />;
+        return <DocumentArrowUpIcon className="w-8 h-8 text-orange-400" />;
       default:
         return <DocumentArrowUpIcon className="w-8 h-8 text-gray-400" />;
     }
   };
 
-  // Career Resources Functions
-  useEffect(() => {
-    if (activeTab === 'career-resources') {
-      fetchCareerResources();
-    }
-  }, [activeTab]);
-
-  const fetchCareerResources = async () => {
-    setResourcesLoading(true);
-    try {
-      const response = await authenticatedFetch('/api/career-resources');
-      const data = await handleApiResponse(response) as { careerResources: CareerResource[] };
-      setCareerResources(data.careerResources || []);
-    } catch (error) {
-      console.error('Failed to fetch career resources:', error);
-    } finally {
-      setResourcesLoading(false);
-    }
-  };
-
+  // Career Resources handlers
   const handleResourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
     
-    const newFiles: CareerResourceFile[] = selectedFiles.map(file => {
-      let type: 'photo' | 'pdf' | 'ppt';
+    const newFiles: UploadedFile[] = selectedFiles.map(file => {
+      let type: 'photo' | 'video' | 'pdf';
       if (file.type.startsWith('image/')) {
         type = 'photo';
       } else if (file.type === 'application/pdf') {
         type = 'pdf';
-      } else if (file.type.includes('presentation') || file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
-        type = 'ppt';
       } else {
-        type = 'pdf'; // Default fallback
+        type = 'photo'; // Default fallback
       }
 
-      const uploadedFile: CareerResourceFile = { file, type };
+      const uploadedFile: UploadedFile = { file, type };
       
       // Create preview for images
       if (type === 'photo') {
@@ -251,16 +221,29 @@ function AdminPageContent() {
     });
   };
 
+  const fetchCareerResources = async () => {
+    try {
+      setResourcesLoading(true);
+      const response = await authenticatedFetch('/api/career-resources');
+      const result = await handleApiResponse<{ resources: CareerResource[] }>(response);
+      setCareerResources(result.resources || []);
+    } catch (error) {
+      console.error('Failed to fetch career resources:', error);
+    } finally {
+      setResourcesLoading(false);
+    }
+  };
+
   const handleResourceSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     
     if (!resourceTitle.trim()) {
-      setMessage({ type: 'error', text: 'Title is required' });
+      setMessage({ type: 'error', text: 'Resource title is required' });
       return;
     }
 
     if (resourceType !== 'text' && resourceFiles.length === 0) {
-      setMessage({ type: 'error', text: 'At least one file is required for non-text resources' });
+      setMessage({ type: 'error', text: `At least one ${resourceType} file is required` });
       return;
     }
 
@@ -273,44 +256,29 @@ function AdminPageContent() {
     setMessage(null);
 
     try {
-      // Create the career resource first
-      const resourceData = {
-        title: resourceTitle.trim(),
-        description: resourceDescription.trim() || null,
-        resource_type: resourceType,
-        content_text: resourceType === 'text' ? resourceContentText.trim() : null,
-        display_order: careerResources.length,
-        is_featured: false
-      };
-
-      const resourceResponse = await authenticatedFetch('/api/career-resources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(resourceData)
-      });
-      
-      const resourceResult = await handleApiResponse(resourceResponse) as { careerResource: CareerResource };
-      const createdResource = resourceResult.careerResource;
-
-      // Upload files if any
-      if (resourceFiles.length > 0) {
-        const formData = new FormData();
-        formData.append('career_resource_id', createdResource.id);
-        
-        resourceFiles.forEach(({ file }) => {
-          formData.append('files', file);
-        });
-
-        const filesResponse = await authenticatedFormFetch('/api/career-resources/files', formData);
-        await handleApiResponse(filesResponse) as unknown;
+      const formData = new FormData();
+      formData.append('title', resourceTitle);
+      formData.append('resource_type', resourceType);
+      if (resourceDescription.trim()) {
+        formData.append('description', resourceDescription);
       }
+      if (resourceType === 'text') {
+        formData.append('content_text', resourceContentText);
+      }
+      
+      resourceFiles.forEach(({ file }) => {
+        formData.append('files', file);
+      });
+
+      const response = await authenticatedFormFetch('/api/career-resources', formData);
+      await handleApiResponse(response);
 
       setMessage({ type: 'success', text: 'Career resource uploaded successfully!' });
       
       // Reset form
       setResourceTitle('');
-      setResourceDescription('');
       setResourceType('text');
+      setResourceDescription('');
       setResourceContentText('');
       setResourceFiles([]);
       
@@ -320,10 +288,10 @@ function AdminPageContent() {
       });
 
       // Refresh the resources list
-      await fetchCareerResources();
+      fetchCareerResources();
 
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Resource upload error:', error);
       setMessage({ 
         type: 'error', 
         text: error instanceof Error ? error.message : 'Upload failed' 
@@ -333,18 +301,12 @@ function AdminPageContent() {
     }
   };
 
-  const deleteCareerResource = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this career resource?')) {
-      return;
-    }
-
+  const deleteCareerResource = async (resourceId: string) => {
     try {
-      await authenticatedFetch(`/api/career-resources/${id}`, {
-        method: 'DELETE'
-      });
-      
+      const response = await authenticatedFetch(`/api/career-resources?id=${resourceId}`, { method: 'DELETE' });
+      await handleApiResponse(response);
       setMessage({ type: 'success', text: 'Career resource deleted successfully!' });
-      await fetchCareerResources();
+      fetchCareerResources();
     } catch (error) {
       console.error('Delete error:', error);
       setMessage({ 
@@ -353,6 +315,13 @@ function AdminPageContent() {
       });
     }
   };
+
+  // Load career resources on component mount
+  useEffect(() => {
+    if (activeTab === 'career-resources') {
+      fetchCareerResources();
+    }
+  }, [activeTab]);
 
 
 
@@ -573,8 +542,24 @@ function AdminPageContent() {
           <div className="animate-slide-in">
             <h2 className="text-xl font-semibold text-white mb-6">Manage Career Resources</h2>
             
+            {/* Show success/error messages at the top */}
+            {message && (
+              <div className={`mb-6 p-4 rounded-lg border backdrop-blur-md transition-all duration-300 ${
+                message.type === 'success' 
+                  ? 'bg-green-500/20 text-green-300 border-green-400/50' 
+                  : 'bg-red-500/20 text-red-300 border-red-400/50'
+              }`}>
+                {message.text}
+              </div>
+            )}
+            
             {/* Career Resource Upload Form */}
-            <form onSubmit={handleResourceSubmit} className="space-y-6 mb-8">
+            <div className="bg-glass-light/50 border border-glass rounded-xl p-6 mb-8">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <DocumentArrowUpIcon className="w-5 h-5 text-green-400" />
+                Add New Career Resource
+              </h3>
+              <form onSubmit={handleResourceSubmit} className="space-y-6">
               {/* Resource Title and Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -721,31 +706,54 @@ function AdminPageContent() {
               )}
 
               {/* Resource Submit Button */}
-              <div className="flex justify-end">
+              <div className="flex justify-center">
                 <button
                   type="submit"
                   disabled={isResourceUploading}
-                  className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ${
+                  className={`px-12 py-4 rounded-lg font-bold text-lg transition-all duration-300 border-2 ${
                     isResourceUploading
-                      ? 'bg-gray-500/50 cursor-not-allowed text-gray-300'
-                      : 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white shadow-glass hover:shadow-glass-lg transform hover:scale-105'
+                      ? 'bg-gray-500/50 cursor-not-allowed text-gray-300 border-gray-400'
+                      : 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white shadow-glass hover:shadow-glass-lg transform hover:scale-105 border-green-400'
                   }`}
                 >
                   {isResourceUploading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Uploading...
+                      Uploading Career Resource...
                     </div>
                   ) : (
-                    'Upload Career Resource'
+                    '📤 Upload Career Resource'
                   )}
                 </button>
               </div>
             </form>
-
+            </div>
+            
+            {/* Test Section - Remove this after debugging */}
+            <div className="bg-yellow-500/10 border border-yellow-400/50 rounded-lg p-4 mb-6">
+              <h4 className="text-yellow-300 font-semibold mb-2">🔧 Debug Info:</h4>
+              <div className="text-sm text-yellow-200 space-y-1">
+                <p>Active Tab: {activeTab}</p>
+                <p>Resources Loading: {resourcesLoading ? 'Yes' : 'No'}</p>
+                <p>Resources Count: {careerResources.length}</p>
+                <p>Upload State: {isResourceUploading ? 'Uploading' : 'Ready'}</p>
+                <button 
+                  onClick={() => fetchCareerResources()}
+                  className="mt-2 px-3 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 transition-colors"
+                >
+                  🔄 Refresh Resources
+                </button>
+              </div>
+            </div>
+            
             {/* Existing Career Resources */}
             <div className="border-t border-glass pt-8">
-              <h3 className="text-lg font-semibold text-white mb-4">Existing Resources</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Existing Resources</h3>
+                <div className="text-sm text-gray-400">
+                  {careerResources.length} resource{careerResources.length !== 1 ? 's' : ''} found
+                </div>
+              </div>
               {resourcesLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -766,10 +774,10 @@ function AdminPageContent() {
                         </div>
                         <button
                           onClick={() => deleteCareerResource(resource.id)}
-                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/30 rounded-lg border border-red-400/50 transition-all duration-200 transform hover:scale-110"
                           title="Delete resource"
                         >
-                          <TrashIcon className="w-4 h-4" />
+                          <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
                       

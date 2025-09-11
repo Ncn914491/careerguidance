@@ -5,7 +5,8 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { 
   DocumentArrowUpIcon,
   UserGroupIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/outline';
 import { LazyWrapper } from '@/components/ui/LazyWrapper';
 
@@ -13,8 +14,9 @@ import { LazyWrapper } from '@/components/ui/LazyWrapper';
 const UploadWeekData = lazy(() => import('./UploadWeekData').then(m => ({ default: m.UploadWeekData })));
 const ManageGroups = lazy(() => import('./ManageGroups').then(m => ({ default: m.ManageGroups })));
 const AdminStats = lazy(() => import('./AdminStats').then(m => ({ default: m.AdminStats })));
+const ManageCareerResources = lazy(() => import('./ManageCareerResources').then(m => ({ default: m.ManageCareerResources })));
 
-type TabType = 'overview' | 'upload' | 'groups' | 'stats';
+type TabType = 'overview' | 'upload' | 'groups' | 'stats' | 'career-resources';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -24,6 +26,7 @@ export function AdminDashboard() {
     { id: 'overview' as TabType, label: 'Overview', icon: ChartBarIcon },
     { id: 'upload' as TabType, label: 'Upload Week Data', icon: DocumentArrowUpIcon },
     { id: 'groups' as TabType, label: 'Manage Groups', icon: UserGroupIcon },
+    { id: 'career-resources' as TabType, label: 'Career Resources', icon: AcademicCapIcon },
     { id: 'stats' as TabType, label: 'Statistics', icon: ChartBarIcon }
   ];
 
@@ -45,6 +48,12 @@ export function AdminDashboard() {
         return (
           <LazyWrapper>
             <AdminStats />
+          </LazyWrapper>
+        );
+      case 'career-resources':
+        return (
+          <LazyWrapper>
+            <ManageCareerResources />
           </LazyWrapper>
         );
       default:
@@ -75,6 +84,7 @@ export function AdminDashboard() {
                   <p className="text-gray-300 text-sm">
                     {tab.id === 'upload' && 'Upload weekly content with photos and PDFs'}
                     {tab.id === 'groups' && 'Create and manage student discussion groups'}
+                    {tab.id === 'career-resources' && 'Upload and manage career guidance resources'}
                     {tab.id === 'stats' && 'View detailed platform analytics and reports'}
                   </p>
                 </div>
