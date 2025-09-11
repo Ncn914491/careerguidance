@@ -40,10 +40,18 @@ export function AdminStats() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/admin/stats');
+      const { getAuthenticatedHeaders } = await import('@/lib/api');
+      const headers = await getAuthenticatedHeaders();
+      
+      const response = await fetch('/api/admin/stats', {
+        headers
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+      } else {
+        console.error('Failed to fetch admin stats:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);

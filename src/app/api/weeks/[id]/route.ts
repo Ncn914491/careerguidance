@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
 
 // Use admin client for database operations
 const supabaseAdmin = createClient(
@@ -20,16 +19,12 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+    const { getUserFromAuthHeader } = await import('@/lib/auth-client');
+    const authHeader = request.headers.get('Authorization');
+    const { user } = await getUserFromAuthHeader(authHeader);
 
-    if (!token) {
+    if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     // Check user role from database using admin client
@@ -50,12 +45,12 @@ export async function PUT(
     }
 
     const params = await context.params;
+    
     const { data, error } = await supabaseAdmin
       .from('weeks')
       .update({
         title: title.trim(),
-        description: description?.trim() || null,
-        updated_at: new Date().toISOString()
+        description: description?.trim() || null
       })
       .eq('id', params.id)
       .select()
@@ -79,16 +74,12 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const token = request.headers.get('Authorization')?.split(' ')?.[1];
+    const { getUserFromAuthHeader } = await import('@/lib/auth-client');
+    const authHeader = request.headers.get('Authorization');
+    const { user } = await getUserFromAuthHeader(authHeader);
 
-    if (!token) {
+    if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     // Check user role from database using admin client

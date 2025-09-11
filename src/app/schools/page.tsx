@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BuildingOfficeIcon, CalendarIcon, MapPinIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { BuildingOfficeIcon, CalendarIcon, MapPinIcon, DocumentTextIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { authenticatedFetch, handleApiResponse } from '@/lib/api-client';
+import Modal from '@/components/ui/Modal';
 
 interface School {
   id: string;
@@ -20,11 +23,16 @@ interface Week {
 }
 
 export default function SchoolsPage() {
+  const { isAdmin, user } = useAuth();
   const [schools, setSchools] = useState<School[]>([]);
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [editForm, setEditForm] = useState({ name: '' });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -62,6 +70,70 @@ export default function SchoolsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEditSchool = (school: School) => {
+    setEditingSchool(school);
+    setEditForm({ name: school.name });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSchool || !isAdmin || !user) return;
+
+    setIsEditing(true);
+    try {
+      const response = await authenticatedFetch(`/api/schools/${editingSchool.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editForm.name
+        })
+      });
+
+      await handleApiResponse(response);
+      
+      // Update the school in the list
+      setSchools(prevSchools => 
+        prevSchools.map(school => 
+          school.id === editingSchool.id 
+            ? { ...school, name: editForm.name }
+            : school
+        )
+      );
+      setEditingSchool(null);
+    } catch (err) {
+      console.error('Failed to update school:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update school');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleDeleteSchool = async (schoolId: string) => {
+    if (!isAdmin || !user || !confirm('Are you sure you want to delete this school?')) {
+      return;
+    }
+
+    setIsDeleting(schoolId);
+    try {
+      const response = await authenticatedFetch(`/api/schools/${schoolId}`, {
+        method: 'DELETE'
+      });
+
+      await handleApiResponse(response);
+      
+      // Remove the school from the list
+      setSchools(prevSchools => prevSchools.filter(school => school.id !== schoolId));
+    } catch (err) {
+      console.error('Failed to delete school:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete school');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingSchool(null);
+    setEditForm({ name: '' });
   };
 
   const extractSchoolsFromPDFs = async () => {
@@ -192,7 +264,7 @@ export default function SchoolsPage() {
             {schools.map((school, index) => (
               <div
                 key={school.id}
-                className="bg-glass-light backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass hover:shadow-glass-lg transition-all duration-300 transform hover:scale-105 animate-slide-in"
+                className="bg-glass-light backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass hover:shadow-glass-lg transition-all duration-300 transform hover:scale-105 animate-slide-in relative group"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-start gap-4">
@@ -219,6 +291,31 @@ export default function SchoolsPage() {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Admin Controls */}
+                  {isAdmin && (
+                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleEditSchool(school)}
+                        className="p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors"
+                        title="Edit school"
+                      >
+                        <PencilIcon className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSchool(school.id)}
+                        disabled={isDeleting === school.id}
+                        className="p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete school"
+                      >
+                        {isDeleting === school.id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+                        ) : (
+                          <TrashIcon className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -234,6 +331,52 @@ export default function SchoolsPage() {
           </div>
         )}
       </div>
+      
+      {/* Edit School Modal */}
+      {editingSchool && (
+        <Modal
+          isOpen={true}
+          onClose={cancelEdit}
+          title={`Edit School: ${editingSchool.name}`}
+          size="md"
+        >
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="edit-name" className="block text-sm font-medium text-gray-300 mb-2">
+                School Name
+              </label>
+              <input
+                id="edit-name"
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ name: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter school name"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={cancelEdit}
+                disabled={isEditing}
+                className="px-4 py-2 text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isEditing || !editForm.name.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isEditing && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                )}
+                {isEditing ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

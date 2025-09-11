@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Modal from '@/components/ui/Modal';
 import FileViewer from '@/components/ui/FileViewer';
-import { api } from '@/lib/api';
+import { authenticatedFetch, handleApiResponse } from '@/lib/api-client';
 import { PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
 
 interface WeekFile {
@@ -668,25 +668,32 @@ export default function WeeksPage() {
     fetchWeeks();
   }, []);
 
-  // Refetch weeks when needed
-  const refetchWeeks = () => {
-    setWeeks([]);
-    setLoading(true);
-    // Trigger re-fetch
-    const fetchWeeks = async () => {
-      try {
-        const response = await fetch('/api/weeks');
-        if (response.ok) {
-          const data = await response.json();
-          setWeeks(data.weeks || []);
-        }
-      } catch {
-        setError('Failed to refresh weeks');
-      } finally {
+  // Refetch weeks when needed (mainly for error recovery)
+  const refetchWeeks = async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+    
+    try {
+      const response = await fetch('/api/weeks');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || 'Failed to fetch weeks'}`);
+      }
+      
+      const data = await response.json();
+      setWeeks(data.weeks || []);
+      setError(null); // Clear errors on successful fetch
+    } catch (err) {
+      console.error('Error refetching weeks:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh weeks';
+      setError(errorMessage);
+      // Don't clear weeks on error - keep the existing data
+    } finally {
+      if (showLoading) {
         setLoading(false);
       }
-    };
-    fetchWeeks();
+    }
   };
 
 
@@ -708,21 +715,38 @@ export default function WeeksPage() {
 
     setIsEditing(true);
     try {
-      const data = await api.put(`/api/weeks/${editingWeek.id}`, {
-        title: editForm.title,
-        description: editForm.description
+      const response = await authenticatedFetch(`/api/weeks/${editingWeek.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: editForm.title,
+          description: editForm.description
+        })
       });
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      const data = await handleApiResponse(response);
 
-      // Refetch weeks to get updated data
-      refetchWeeks();
+      // Update local state immediately for better UX
+      setWeeks(prevWeeks => 
+        prevWeeks.map(week => 
+          week.id === editingWeek.id 
+            ? { ...week, title: editForm.title, description: editForm.description }
+            : week
+        )
+      );
+      
       setEditingWeek(null);
+      setError(null); // Clear any previous errors
+      
     } catch (err) {
       console.error('Failed to update week:', err);
       setError(err instanceof Error ? err.message : 'Failed to update week');
+      
+      // On error, try to refetch to get the correct state
+      try {
+        await refetchWeeks();
+      } catch (refetchErr) {
+        console.error('Failed to refetch weeks after error:', refetchErr);
+      }
     } finally {
       setIsEditing(false);
     }
@@ -735,17 +759,26 @@ export default function WeeksPage() {
 
     setIsDeleting(weekId);
     try {
-      const data = await api.delete(`/api/weeks/${weekId}`);
+      const response = await authenticatedFetch(`/api/weeks/${weekId}`, {
+        method: 'DELETE'
+      });
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      const data = await handleApiResponse(response);
 
-      // Refetch weeks to get updated data
-      refetchWeeks();
+      // Update local state immediately
+      setWeeks(prevWeeks => prevWeeks.filter(week => week.id !== weekId));
+      setError(null); // Clear any previous errors
+      
     } catch (err) {
       console.error('Failed to delete week:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete week');
+      
+      // On error, try to refetch to get the correct state
+      try {
+        await refetchWeeks();
+      } catch (refetchErr) {
+        console.error('Failed to refetch weeks after delete error:', refetchErr);
+      }
     } finally {
       setIsDeleting(null);
     }
@@ -814,7 +847,7 @@ export default function WeeksPage() {
             </div>
             <p className="text-red-400 mb-4">{error}</p>
             <button
-              onClick={refetchWeeks}
+              onClick={() => refetchWeeks(true)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               Try Again

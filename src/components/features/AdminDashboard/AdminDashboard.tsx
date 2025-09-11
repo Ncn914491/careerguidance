@@ -5,8 +5,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { 
   DocumentArrowUpIcon,
   UserGroupIcon,
-  ChartBarIcon,
-  UserPlusIcon
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { LazyWrapper } from '@/components/ui/LazyWrapper';
 
@@ -14,9 +13,8 @@ import { LazyWrapper } from '@/components/ui/LazyWrapper';
 const UploadWeekData = lazy(() => import('./UploadWeekData').then(m => ({ default: m.UploadWeekData })));
 const ManageGroups = lazy(() => import('./ManageGroups').then(m => ({ default: m.ManageGroups })));
 const AdminStats = lazy(() => import('./AdminStats').then(m => ({ default: m.AdminStats })));
-const AdminRequestDashboard = lazy(() => import('@/components/AdminRequestDashboard'));
 
-type TabType = 'overview' | 'upload' | 'groups' | 'requests' | 'stats';
+type TabType = 'overview' | 'upload' | 'groups' | 'stats';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -26,7 +24,6 @@ export function AdminDashboard() {
     { id: 'overview' as TabType, label: 'Overview', icon: ChartBarIcon },
     { id: 'upload' as TabType, label: 'Upload Week Data', icon: DocumentArrowUpIcon },
     { id: 'groups' as TabType, label: 'Manage Groups', icon: UserGroupIcon },
-    { id: 'requests' as TabType, label: 'Admin Requests', icon: UserPlusIcon },
     { id: 'stats' as TabType, label: 'Statistics', icon: ChartBarIcon }
   ];
 
@@ -42,12 +39,6 @@ export function AdminDashboard() {
         return (
           <LazyWrapper>
             <ManageGroups />
-          </LazyWrapper>
-        );
-      case 'requests':
-        return (
-          <LazyWrapper>
-            <AdminRequestDashboard />
           </LazyWrapper>
         );
       case 'stats':
@@ -84,7 +75,6 @@ export function AdminDashboard() {
                   <p className="text-gray-300 text-sm">
                     {tab.id === 'upload' && 'Upload weekly content with photos and PDFs'}
                     {tab.id === 'groups' && 'Create and manage student discussion groups'}
-                    {tab.id === 'requests' && 'Review and approve admin access requests'}
                     {tab.id === 'stats' && 'View detailed platform analytics and reports'}
                   </p>
                 </div>

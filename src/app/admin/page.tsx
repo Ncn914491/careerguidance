@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
-import AdminRequestDashboard from '@/components/AdminRequestDashboard';
+import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AuthGuard } from '@/components/ui/AuthGuard';
 
 interface UploadedFile {
@@ -18,7 +17,6 @@ function AdminPageContent() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'upload' | 'requests'>('upload');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
@@ -163,36 +161,8 @@ function AdminPageContent() {
           Admin Panel
         </h1>
 
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-8 bg-glass-dark p-1 rounded-lg border border-glass">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-300 ${
-              activeTab === 'upload'
-                ? 'bg-glass-light border border-glass text-white shadow-glass-sm'
-                : 'text-gray-300 hover:text-white hover:bg-glass'
-            }`}
-          >
-            <DocumentArrowUpIcon className="w-4 h-4 inline mr-2" />
-            Upload Content
-          </button>
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-300 ${
-              activeTab === 'requests'
-                ? 'bg-glass-light border border-glass text-white shadow-glass-sm'
-                : 'text-gray-300 hover:text-white hover:bg-glass'
-            }`}
-          >
-            <UserGroupIcon className="w-4 h-4 inline mr-2" />
-            Manage Requests
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'upload' ? (
-          <div className="animate-slide-in">
-            <h2 className="text-xl font-semibold text-white mb-6">Upload Week Content</h2>
+        <div className="animate-slide-in">
+          <h2 className="text-xl font-semibold text-white mb-6">Upload Week Content</h2>
 
             {message && (
               <div className={`mb-6 p-4 rounded-lg border backdrop-blur-md transition-all duration-300 ${
@@ -364,12 +334,7 @@ function AdminPageContent() {
                 </button>
               </div>
             </form>
-          </div>
-        ) : (
-          <div className="animate-slide-in">
-            <AdminRequestDashboard />
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
