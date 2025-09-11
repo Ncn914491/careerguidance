@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon, AcademicCapIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { DocumentArrowUpIcon, PhotoIcon, DocumentIcon, XMarkIcon, AcademicCapIcon, CalendarDaysIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { AuthGuard } from '@/components/ui/AuthGuard';
 import { authenticatedFormFetch, authenticatedFetch, handleApiResponse } from '@/lib/api-client';
 
@@ -364,8 +364,36 @@ function AdminPageContent() {
           Admin Panel
         </h1>
 
-        <div className="animate-slide-in">
-          <h2 className="text-xl font-semibold text-white mb-6">Upload Week Content</h2>
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-lg mb-8">
+          <button
+            onClick={() => setActiveTab('weeks')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'weeks' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+            }`}
+          >
+            <CalendarDaysIcon className="w-5 h-5" />
+            Week Content
+          </button>
+          <button
+            onClick={() => setActiveTab('career-resources')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'career-resources' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+            }`}
+          >
+            <AcademicCapIcon className="w-5 h-5" />
+            Career Resources
+          </button>
+        </div>
+
+        {/* Week Upload Tab */}
+        {activeTab === 'weeks' && (
+          <div className="animate-slide-in">
+            <h2 className="text-xl font-semibold text-white mb-6">Upload Week Content</h2>
 
             {message && (
               <div className={`mb-6 p-4 rounded-lg border backdrop-blur-md transition-all duration-300 ${
@@ -537,7 +565,236 @@ function AdminPageContent() {
                 </button>
               </div>
             </form>
-        </div>
+          </div>
+        )}
+
+        {/* Career Resources Tab */}
+        {activeTab === 'career-resources' && (
+          <div className="animate-slide-in">
+            <h2 className="text-xl font-semibold text-white mb-6">Manage Career Resources</h2>
+            
+            {/* Career Resource Upload Form */}
+            <form onSubmit={handleResourceSubmit} className="space-y-6 mb-8">
+              {/* Resource Title and Type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="resourceTitle" className="block text-sm font-medium text-white mb-2">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    id="resourceTitle"
+                    value={resourceTitle}
+                    onChange={(e) => setResourceTitle(e.target.value)}
+                    className="w-full px-4 py-3 bg-glass border border-glass rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-white placeholder-gray-400 transition-all duration-300"
+                    placeholder="Enter resource title"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="resourceType" className="block text-sm font-medium text-white mb-2">
+                    Resource Type *
+                  </label>
+                  <select
+                    id="resourceType"
+                    value={resourceType}
+                    onChange={(e) => setResourceType(e.target.value as 'photo' | 'pdf' | 'ppt' | 'text')}
+                    className="w-full px-4 py-3 bg-glass border border-glass rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-white transition-all duration-300"
+                    required
+                  >
+                    <option value="text">Text Content</option>
+                    <option value="photo">Photo</option>
+                    <option value="pdf">PDF Document</option>
+                    <option value="ppt">PowerPoint Presentation</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="resourceDescription" className="block text-sm font-medium text-white mb-2">
+                  Description
+                </label>
+                <textarea
+                  id="resourceDescription"
+                  value={resourceDescription}
+                  onChange={(e) => setResourceDescription(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-glass border border-glass rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-white placeholder-gray-400 transition-all duration-300 resize-none"
+                  placeholder="Enter resource description (optional)"
+                />
+              </div>
+
+              {/* Text Content (if type is text) */}
+              {resourceType === 'text' && (
+                <div>
+                  <label htmlFor="resourceContentText" className="block text-sm font-medium text-white mb-2">
+                    Content Text *
+                  </label>
+                  <textarea
+                    id="resourceContentText"
+                    value={resourceContentText}
+                    onChange={(e) => setResourceContentText(e.target.value)}
+                    rows={6}
+                    className="w-full px-4 py-3 bg-glass border border-glass rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400/50 text-white placeholder-gray-400 transition-all duration-300 resize-none"
+                    placeholder="Enter career guidance content..."
+                    required
+                  />
+                </div>
+              )}
+
+              {/* File Upload (if not text type) */}
+              {resourceType !== 'text' && (
+                <div>
+                  <label htmlFor="resourceFileInput" className="block text-sm font-medium text-white mb-2">
+                    Files * (Required for {resourceType} resources)
+                  </label>
+                  <div className="border-2 border-dashed border-glass rounded-lg p-6 text-center hover:border-blue-400/50 transition-all duration-300 bg-glass-light backdrop-blur-md">
+                    <input
+                      type="file"
+                      multiple
+                      accept={
+                        resourceType === 'photo' ? 'image/*' :
+                        resourceType === 'pdf' ? '.pdf' :
+                        resourceType === 'ppt' ? '.ppt,.pptx' : '*'
+                      }
+                      onChange={handleResourceFileChange}
+                      className="hidden"
+                      id="resourceFileInput"
+                    />
+                    <label htmlFor="resourceFileInput" className="cursor-pointer">
+                      {getFileIcon(resourceType)}
+                      <div className="mt-4">
+                        <p className="text-gray-300 mb-2">Click to upload {resourceType} files</p>
+                        <p className="text-sm text-gray-400">
+                          Supports {
+                            resourceType === 'photo' ? 'images (JPG, PNG, etc.)' :
+                            resourceType === 'pdf' ? 'PDF documents' :
+                            'PowerPoint presentations (.ppt, .pptx)'
+                          }
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Resource File Preview */}
+              {resourceFiles.length > 0 && (
+                <div className="animate-slide-in">
+                  <h3 className="text-lg font-medium text-white mb-4">Resource Files</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {resourceFiles.map((file, index) => (
+                      <div key={index} className="relative bg-glass backdrop-blur-md border border-glass rounded-lg p-4">
+                        <button
+                          type="button"
+                          onClick={() => removeResourceFile(index)}
+                          className="absolute top-2 right-2 p-1 bg-red-500/80 text-white rounded-full hover:bg-red-600 transition-all duration-200 backdrop-blur-sm"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="flex items-center gap-3 mb-2">
+                          {getFileIcon(file.type)}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">
+                              {file.file.name}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {(file.file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {file.preview && (
+                          <img
+                            src={file.preview}
+                            alt="Preview"
+                            className="w-full h-32 object-cover rounded-md"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Resource Submit Button */}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isResourceUploading}
+                  className={`px-8 py-3 rounded-lg font-medium transition-all duration-300 ${
+                    isResourceUploading
+                      ? 'bg-gray-500/50 cursor-not-allowed text-gray-300'
+                      : 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white shadow-glass hover:shadow-glass-lg transform hover:scale-105'
+                  }`}
+                >
+                  {isResourceUploading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Uploading...
+                    </div>
+                  ) : (
+                    'Upload Career Resource'
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Existing Career Resources */}
+            <div className="border-t border-glass pt-8">
+              <h3 className="text-lg font-semibold text-white mb-4">Existing Resources</h3>
+              {resourcesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : careerResources.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">No career resources uploaded yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {careerResources.map((resource) => (
+                    <div key={resource.id} className="bg-glass backdrop-blur-md border border-glass rounded-lg p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          {getFileIcon(resource.resource_type)}
+                          <div>
+                            <h4 className="text-white font-semibold text-sm">{resource.title}</h4>
+                            <p className="text-xs text-gray-400 capitalize">{resource.resource_type}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteCareerResource(resource.id)}
+                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
+                          title="Delete resource"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      {resource.description && (
+                        <p className="text-gray-300 text-sm mb-3">{resource.description}</p>
+                      )}
+                      
+                      {resource.resource_type === 'text' ? (
+                        <p className="text-gray-400 text-xs line-clamp-3">{resource.content_text}</p>
+                      ) : (
+                        <p className="text-gray-400 text-xs">
+                          {resource.career_resource_files?.length || 0} file(s)
+                        </p>
+                      )}
+                      
+                      <p className="text-xs text-gray-500 mt-2">
+                        Created: {new Date(resource.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
