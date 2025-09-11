@@ -40,4 +40,28 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# vercel
 .vercel
+
+# Development and debug files
+test-*.js
+debug-*.js
+*.log
+
+# IDE and editor folders
+.vscode/
+.kiro/
+.idea/
+
+# Documentation files (except README)
+*_SUMMARY.md
+*_FIXES*.md
+*TROUBLESHOOTING*.md
+CHANGELOG.md
+WARP.md
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*~
