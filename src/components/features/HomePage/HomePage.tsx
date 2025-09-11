@@ -57,7 +57,7 @@ export default function HomePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 animate-slide-in">
         <InfoBox
           title="Schools Visited"
-          value="5+"
+          value="4+"
           color="text-blue-400"
           onClick={handleSchoolsClick}
           icon={

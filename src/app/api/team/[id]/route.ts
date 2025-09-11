@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import type { TablesUpdate } from '@/types/database';
 
 // Use admin client for database operations
 const supabaseAdmin = createClient(
@@ -45,9 +46,8 @@ export async function PUT(
     }
 
     const params = await context.params;
-    const updateData: Record<string, string | null> = {
-      name: name.trim(),
-      updated_at: new Date().toISOString()
+    const updateData: TablesUpdate<'team_members'> = {
+      name: name.trim()
     };
 
     // Add optional fields if provided
