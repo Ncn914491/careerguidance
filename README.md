@@ -23,7 +23,7 @@ A comprehensive web application designed to provide career guidance, educational
 - **Real-time Updates**: Live message updates using Supabase realtime
 
 ### 🤖 AI-Powered Assistant
-- **Career Guidance AI**: Powered by Google Gemini 1.5 Flash
+- **Career Guidance AI**: Powered by Google Gemini 2.5 Flash
 - **Intelligent Responses**: Context-aware career advice and guidance
 - **Chat History**: Persistent conversation history
 - **Safety Filters**: Built-in content moderation and safety
