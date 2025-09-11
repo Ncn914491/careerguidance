@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserGroupIcon, ChatBubbleLeftRightIcon, PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGroups } from '@/hooks/useSupabaseQuery';
@@ -16,6 +17,7 @@ interface Group {
 }
 
 export function ViewGroups() {
+  const router = useRouter();
   const { user, isLoading: authLoading, isInitialized } = useAuth();
   const { data: groups = [], error, isLoading, mutate } = useGroups();
   const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
@@ -102,8 +104,8 @@ export function ViewGroups() {
   };
 
   const handleOpenChat = (groupId: string) => {
-    // Navigate to group chat
-    window.location.href = `/groups/${groupId}`;
+    // Navigate to group chat using Next.js router
+    router.push(`/groups/${groupId}`);
   };
 
   if (isLoading) {
