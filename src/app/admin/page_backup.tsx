@@ -203,7 +203,7 @@ function AdminPageContent() {
     setResourcesLoading(true);
     try {
       const response = await authenticatedFetch('/api/career-resources');
-      const data = await handleApiResponse(response) as { careerResources: CareerResource[] };
+      const data = await handleApiResponse(response);
       setCareerResources(data.careerResources || []);
     } catch (error) {
       console.error('Failed to fetch career resources:', error);
@@ -289,7 +289,7 @@ function AdminPageContent() {
         body: JSON.stringify(resourceData)
       });
       
-      const resourceResult = await handleApiResponse(resourceResponse) as { careerResource: CareerResource };
+      const resourceResult = await handleApiResponse(resourceResponse);
       const createdResource = resourceResult.careerResource;
 
       // Upload files if any
@@ -302,7 +302,7 @@ function AdminPageContent() {
         });
 
         const filesResponse = await authenticatedFormFetch('/api/career-resources/files', formData);
-        await handleApiResponse(filesResponse) as unknown;
+        await handleApiResponse(filesResponse);
       }
 
       setMessage({ type: 'success', text: 'Career resource uploaded successfully!' });

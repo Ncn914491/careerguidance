@@ -922,17 +922,35 @@ export default function WeeksPage() {
   }
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 scroll-smooth">
       {/* Header */}
       <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in sticky top-0 z-10">
-        <h1 className="text-2xl font-bold text-white mb-1">Weeks & Career Resources</h1>
-        <p className="text-gray-300">
-          View weekly content and materials from program visits, plus career guidance resources.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1">Weeks & Career Resources</h1>
+            <p className="text-gray-300">
+              View weekly content and materials from program visits, plus career guidance resources.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => document.getElementById('weeks')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-3 py-2 bg-blue-500/20 text-blue-300 text-sm rounded-lg hover:bg-blue-500/30 transition-colors border border-blue-400/30"
+            >
+              📅 Weeks
+            </button>
+            <button
+              onClick={() => document.getElementById('career-resources')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-3 py-2 bg-green-500/20 text-green-300 text-sm rounded-lg hover:bg-green-500/30 transition-colors border border-green-400/30"
+            >
+              🎯 Resources
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Section 1: Weeks */}
-      <section id="weeks" className="space-y-6">
+      <section id="weeks" className="space-y-6 scroll-mt-20 min-h-screen">
         <h2 className="text-xl font-semibold text-white">Weeks</h2>
         {weeks.length === 0 ? (
           <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
@@ -970,7 +988,7 @@ export default function WeeksPage() {
       </div>
 
       {/* Section 2: Career Resources */}
-      <section id="career-resources" className="space-y-6">
+      <section id="career-resources" className="space-y-6 scroll-mt-20 min-h-screen">
         {careerResourcesLoading ? (
           <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass">
             <div className="flex items-center justify-center py-8">
@@ -1009,13 +1027,46 @@ export default function WeeksPage() {
                   ) : (
                     <div className="space-y-2">
                       {res.career_resource_files?.map((f) => (
-                        <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-3 py-2 bg-gray-800/40 hover:bg-gray-800/60 rounded-lg border border-glass">
+                        <div key={f.id} className="flex items-center justify-between px-3 py-2 bg-gray-800/40 hover:bg-gray-800/60 rounded-lg border border-glass">
                           <div className="flex items-center gap-2 text-gray-200">
                             {getFileTypeIcon(f.file_type)}
                             <span className="text-sm">{f.file_name}</span>
                           </div>
-                          <span className="text-xs text-gray-400">{Math.round(((f.file_size || 0)/1024))} KB</span>
-                        </a>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{Math.round(((f.file_size || 0)/1024))} KB</span>
+                            {f.file_type === 'ppt' ? (
+                              <div className="flex gap-1">
+                                <a 
+                                  href={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(f.file_url)}`}
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="px-2 py-1 bg-orange-500/20 text-orange-300 text-xs rounded hover:bg-orange-500/30 transition-colors"
+                                  title="Preview PPT"
+                                >
+                                  Preview
+                                </a>
+                                <a 
+                                  href={f.file_url} 
+                                  download
+                                  className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded hover:bg-blue-500/30 transition-colors"
+                                  title="Download PPT"
+                                >
+                                  Download
+                                </a>
+                              </div>
+                            ) : (
+                              <a 
+                                href={f.file_url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded hover:bg-blue-500/30 transition-colors"
+                                title={`Open ${f.file_type.toUpperCase()}`}
+                              >
+                                Open
+                              </a>
+                            )}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
