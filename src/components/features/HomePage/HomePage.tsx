@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import InfoBox from '@/components/ui/InfoBox';
 import Modal from '@/components/ui/Modal';
 import SchoolsList from './SchoolsList';
@@ -9,6 +10,7 @@ import TeamPopup from './TeamPopup';
 export default function HomePage() {
   const [showSchoolsModal, setShowSchoolsModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
+  const router = useRouter();
 
   const handleSchoolsClick = () => {
     setShowSchoolsModal(true);
@@ -24,6 +26,18 @@ export default function HomePage() {
 
   const handleVisitsClick = () => {
     // Static display - no action needed per requirements
+  };
+
+  const handleViewLatestWeek = () => {
+    router.push('/weeks');
+  };
+
+  const handleJoinGroupChat = () => {
+    router.push('/groups');
+  };
+
+  const handleAskAI = () => {
+    router.push('/ai-chat');
   };
 
   return (
@@ -94,17 +108,26 @@ export default function HomePage() {
       <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
         <h2 className="text-xl font-semibold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 bg-glass-light rounded-lg border border-glass hover:bg-glass-dark hover:shadow-glass-sm transition-all duration-300 text-left transform hover:scale-105 active:scale-95">
+          <button 
+            onClick={handleViewLatestWeek}
+            className="p-4 bg-glass-light rounded-lg border border-glass hover:bg-glass-dark hover:shadow-glass-sm transition-all duration-300 text-left transform hover:scale-105 active:scale-95"
+          >
             <h3 className="font-medium text-white">View Latest Week</h3>
             <p className="text-sm text-gray-400 mt-1">Check out the most recent program content</p>
           </button>
           
-          <button className="p-4 bg-glass-light rounded-lg border border-glass hover:bg-glass-dark hover:shadow-glass-sm transition-all duration-300 text-left transform hover:scale-105 active:scale-95">
+          <button 
+            onClick={handleJoinGroupChat}
+            className="p-4 bg-glass-light rounded-lg border border-glass hover:bg-glass-dark hover:shadow-glass-sm transition-all duration-300 text-left transform hover:scale-105 active:scale-95"
+          >
             <h3 className="font-medium text-white">Join Group Chat</h3>
             <p className="text-sm text-gray-400 mt-1">Connect with other participants</p>
           </button>
           
-          <button className="p-4 bg-glass-light rounded-lg border border-glass hover:bg-glass-dark hover:shadow-glass-sm transition-all duration-300 text-left transform hover:scale-105 active:scale-95">
+          <button 
+            onClick={handleAskAI}
+            className="p-4 bg-glass-light rounded-lg border border-glass hover:bg-glass-dark hover:shadow-glass-sm transition-all duration-300 text-left transform hover:scale-105 active:scale-95"
+          >
             <h3 className="font-medium text-white">Ask AI Assistant</h3>
             <p className="text-sm text-gray-400 mt-1">Get help with your questions</p>
           </button>
