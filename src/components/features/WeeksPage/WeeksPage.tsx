@@ -629,14 +629,40 @@ function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps
   );
 }
 
+// Career Resource interfaces
+interface CareerResourceFile {
+  id: string;
+  file_name: string;
+  file_type: 'photo' | 'pdf' | 'ppt';
+  file_url: string;
+  file_size: number | null;
+  created_at: string;
+}
+
+interface CareerResource {
+  id: string;
+  title: string;
+  description: string | null;
+  resource_type: 'photo' | 'pdf' | 'ppt' | 'text';
+  content_text: string | null;
+  display_order: number;
+  is_featured: boolean;
+  created_at: string;
+  career_resource_files: CareerResourceFile[];
+}
+
 export default function WeeksPage() {
   const { isAdmin, user } = useAuth();
   
   // Use simple state instead of complex data fetching hook
   const [weeks, setWeeks] = useState<Week[]>([]);
+  const [careerResources, setCareerResources] = useState<CareerResource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [careerResourcesLoading, setCareerResourcesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [careerResourcesError, setCareerResourcesError] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
+  const [selectedCareerResource, setSelectedCareerResource] = useState<CareerResource | null>(null);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [editingWeek, setEditingWeek] = useState<Week | null>(null);
   const [editForm, setEditForm] = useState({ title: '', description: '' });
@@ -666,6 +692,37 @@ export default function WeeksPage() {
     };
 
     fetchWeeks();
+  }, []);
+
+  // Fetch career resources data
+  useEffect(() => {
+    const fetchCareerResources = async () => {
+      try {
+        setCareerResourcesLoading(true);
+        setCareerResourcesError(null);
+        
+        const response = await fetch('/api/career-resources');
+        if (!response.ok) {
+          // If API returns 404 or 500, likely tables don't exist yet
+          if (response.status === 404 || response.status === 500) {
+            setCareerResources([]);
+            setCareerResourcesError(null);
+            return;
+          }
+          throw new Error('Failed to fetch career resources');
+        }
+        
+        const data = await response.json();
+        setCareerResources(data.careerResources || []);
+      } catch (err) {
+        console.error('Error fetching career resources:', err);
+        setCareerResourcesError(err instanceof Error ? err.message : 'Failed to load career resources');
+      } finally {
+        setCareerResourcesLoading(false);
+      }
+    };
+
+    fetchCareerResources();
   }, []);
 
   // Refetch weeks when needed (mainly for error recovery)
@@ -809,6 +866,12 @@ export default function WeeksPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
         );
+      case 'ppt':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+          </svg>
+        );
       default:
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -859,42 +922,111 @@ export default function WeeksPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
-        <h1 className="text-2xl font-bold text-white mb-4">Weeks & Career Resources</h1>
+    <div className="space-y-12">
+      {/* Header */}
+      <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in sticky top-0 z-10">
+        <h1 className="text-2xl font-bold text-white mb-1">Weeks & Career Resources</h1>
         <p className="text-gray-300">
           View weekly content and materials from program visits, plus career guidance resources.
         </p>
       </div>
 
-      {weeks.length === 0 ? (
-        <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
+      {/* Section 1: Weeks */}
+      <section id="weeks" className="space-y-6">
+        <h2 className="text-xl font-semibold text-white">Weeks</h2>
+        {weeks.length === 0 ? (
+          <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass animate-fade-in">
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <p className="text-gray-400">No weeks available yet.</p>
             </div>
-            <p className="text-gray-400">No weeks available yet.</p>
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {weeks.map((week) => (
-            <WeekWidget 
-              key={week.id} 
-              week={week} 
-              isAdmin={isAdmin} 
-              onEdit={handleEditWeek} 
-              onDelete={handleDeleteWeek} 
-              isDeleting={isDeleting === week.id}
-              onClick={() => setSelectedWeek(week)}
-            />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {weeks.map((week) => (
+              <WeekWidget 
+                key={week.id} 
+                week={week} 
+                isAdmin={isAdmin} 
+                onEdit={handleEditWeek} 
+                onDelete={handleDeleteWeek} 
+                isDeleting={isDeleting === week.id}
+                onClick={() => setSelectedWeek(week)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* Enhanced Week Modal with Slideshow */}
+      {/* Barrier / Divider */}
+      <div className="flex items-center gap-4">
+        <div className="h-px bg-gray-700 flex-1" />
+        <span className="text-gray-400 text-sm">Career Guidance Resources</span>
+        <div className="h-px bg-gray-700 flex-1" />
+      </div>
+
+      {/* Section 2: Career Resources */}
+      <section id="career-resources" className="space-y-6">
+        {careerResourcesLoading ? (
+          <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass">
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            </div>
+          </div>
+        ) : careerResources.length === 0 ? (
+          <div className="bg-glass backdrop-blur-md rounded-xl p-6 border border-glass shadow-glass">
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-2">
+                <svg className="w-10 h-10 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-gray-400">No career resources available yet.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {careerResources.map((res) => (
+              <div key={res.id} className="bg-glass backdrop-blur-md rounded-xl border border-glass shadow-glass overflow-hidden">
+                <div className="p-4 border-b border-glass flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-semibold leading-tight">{res.title}</h3>
+                    {res.description && (
+                      <p className="text-gray-400 text-sm mt-1 line-clamp-2">{res.description}</p>
+                    )}
+                  </div>
+                  <div className="text-gray-300" title={res.resource_type}>
+                    {getFileTypeIcon(res.resource_type)}
+                  </div>
+                </div>
+                <div className="p-4">
+                  {res.resource_type === 'text' ? (
+                    <p className="text-gray-300 whitespace-pre-wrap text-sm">{res.content_text}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {res.career_resource_files?.map((f) => (
+                        <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-3 py-2 bg-gray-800/40 hover:bg-gray-800/60 rounded-lg border border-glass">
+                          <div className="flex items-center gap-2 text-gray-200">
+                            {getFileTypeIcon(f.file_type)}
+                            <span className="text-sm">{f.file_name}</span>
+                          </div>
+                          <span className="text-xs text-gray-400">{Math.round(((f.file_size || 0)/1024))} KB</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Modals */}
       {selectedWeek && (
         <WeekModal 
           week={selectedWeek}
@@ -903,7 +1035,6 @@ export default function WeeksPage() {
         />
       )}
 
-      {/* Edit Week Modal */}
       {editingWeek && (
         <Modal
           isOpen={true}
