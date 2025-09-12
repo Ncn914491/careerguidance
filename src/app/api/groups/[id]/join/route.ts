@@ -31,6 +31,30 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
+    // Ensure user profile exists
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      // Create profile if it doesn't exist
+      const { error: createError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email,
+          role: 'student',
+          created_at: new Date().toISOString()
+        });
+      
+      if (createError) {
+        console.error('Error creating user profile:', createError);
+        return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
+      }
+    }
+
     const params = await context.params;
     const groupId = params.id;
 

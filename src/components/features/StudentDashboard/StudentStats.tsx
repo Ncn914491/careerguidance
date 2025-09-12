@@ -13,24 +13,24 @@ import {
 interface StudentStats {
   groupsJoined: number;
   totalGroups: number;
-  weeksViewed: number;
-  totalWeeks: number;
-  schoolsExplored: number;
-  totalSchools: number;
+  resourcesViewed: number;
+  totalResources: number;
   messagesPosted: number;
   activeDays: number;
+  totalLogins: number;
+  lastActive: string;
 }
 
 export function StudentStats() {
   const [stats, setStats] = useState<StudentStats>({
     groupsJoined: 0,
     totalGroups: 0,
-    weeksViewed: 0,
-    totalWeeks: 0,
-    schoolsExplored: 0,
-    totalSchools: 0,
+    resourcesViewed: 0,
+    totalResources: 0,
     messagesPosted: 0,
-    activeDays: 0
+    activeDays: 0,
+    totalLogins: 0,
+    lastActive: new Date().toISOString()
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,14 +52,14 @@ export function StudentStats() {
         console.error('Failed to fetch student stats:', data.error);
         // Set some default stats if API fails
         setStats({
-          groupsJoined: 1,
-          totalGroups: 3,
-          weeksViewed: 2,
-          totalWeeks: 8,
-          schoolsExplored: 3,
-          totalSchools: 10,
-          messagesPosted: 5,
-          activeDays: 7
+          groupsJoined: 0,
+          totalGroups: 5,
+          resourcesViewed: 0,
+          totalResources: 15,
+          messagesPosted: 0,
+          activeDays: 1,
+          totalLogins: 1,
+          lastActive: new Date().toISOString()
         });
       } else {
         setStats(data);
@@ -68,14 +68,14 @@ export function StudentStats() {
       console.error('Error fetching student stats:', error);
       // Set some default stats if API fails
       setStats({
-        groupsJoined: 1,
-        totalGroups: 3,
-        weeksViewed: 2,
-        totalWeeks: 8,
-        schoolsExplored: 3,
-        totalSchools: 10,
-        messagesPosted: 5,
-        activeDays: 7
+        groupsJoined: 0,
+        totalGroups: 5,
+        resourcesViewed: 0,
+        totalResources: 15,
+        messagesPosted: 0,
+        activeDays: 1,
+        totalLogins: 1,
+        lastActive: new Date().toISOString()
       });
     } finally {
       setIsLoading(false);
@@ -92,43 +92,88 @@ export function StudentStats() {
       description: `${stats.totalGroups - stats.groupsJoined} more available`
     },
     {
-      title: 'Weeks Explored',
-      value: stats.weeksViewed,
-      total: stats.totalWeeks,
-      icon: CalendarDaysIcon,
+      title: 'Resources Viewed',
+      value: stats.resourcesViewed,
+      total: stats.totalResources,
+      icon: BookOpenIcon,
       color: 'from-purple-500 to-purple-600',
-      description: `${stats.totalWeeks - stats.weeksViewed} remaining`
-    },
-    {
-      title: 'Schools Viewed',
-      value: stats.schoolsExplored,
-      total: stats.totalSchools,
-      icon: AcademicCapIcon,
-      color: 'from-green-500 to-green-600',
-      description: `${stats.totalSchools - stats.schoolsExplored} more to explore`
+      description: `${stats.totalResources - stats.resourcesViewed} remaining`
     },
     {
       title: 'Messages Posted',
       value: stats.messagesPosted,
       icon: ChatBubbleLeftRightIcon,
-      color: 'from-orange-500 to-orange-600',
+      color: 'from-green-500 to-green-600',
       description: 'In group discussions'
+    },
+    {
+      title: 'Active Days',
+      value: stats.activeDays,
+      icon: CalendarDaysIcon,
+      color: 'from-orange-500 to-orange-600',
+      description: 'Days using platform'
     }
   ];
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold text-white">Your Progress</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-white">Your Progress</h2>
+          <div className="h-10 w-20 bg-glass animate-pulse rounded-lg"></div>
+        </div>
+        
+        {/* Main Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-glass backdrop-blur-md rounded-xl border border-glass p-6 animate-pulse">
-              <div className="h-12 w-12 bg-glass rounded-lg mb-4"></div>
-              <div className="h-8 bg-glass rounded w-16 mb-2"></div>
-              <div className="h-4 bg-glass rounded w-24 mb-2"></div>
-              <div className="h-3 bg-glass rounded w-32"></div>
+            <div key={i} className="bg-glass backdrop-blur-md rounded-xl border border-glass p-6">
+              <div className="animate-pulse">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="h-12 w-12 bg-glass-light rounded-lg"></div>
+                  <div className="text-right">
+                    <div className="h-8 bg-glass-light rounded w-16 mb-1"></div>
+                    <div className="h-4 bg-glass-light rounded w-20"></div>
+                  </div>
+                </div>
+                <div className="h-2 bg-glass-light rounded-full mb-2"></div>
+                <div className="h-3 bg-glass-light rounded w-32"></div>
+              </div>
             </div>
           ))}
+        </div>
+        
+        {/* Loading skeletons for additional sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map(i => (
+            <div key={i} className="bg-glass backdrop-blur-md rounded-xl border border-glass p-6">
+              <div className="animate-pulse">
+                <div className="h-6 bg-glass-light rounded w-1/2 mb-4"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map(j => (
+                    <div key={j} className="flex justify-between items-center">
+                      <div className="h-4 bg-glass-light rounded w-1/3"></div>
+                      <div className="h-4 bg-glass-light rounded w-12"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Achievements section loading */}
+        <div className="bg-glass backdrop-blur-md rounded-xl border border-glass p-6">
+          <div className="animate-pulse">
+            <div className="h-6 bg-glass-light rounded w-1/4 mb-4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="p-4 rounded-lg border border-glass">
+                  <div className="h-6 bg-glass-light rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-glass-light rounded w-full"></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -198,9 +243,9 @@ export function StudentStats() {
           </h3>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-gray-300">Content Engagement</span>
+              <span className="text-gray-300">Resource Engagement</span>
               <span className="text-white font-semibold">
-                {getProgressPercentage(stats.weeksViewed, stats.totalWeeks)}%
+                {getProgressPercentage(stats.resourcesViewed, stats.totalResources)}%
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -210,9 +255,9 @@ export function StudentStats() {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-300">School Exploration</span>
+              <span className="text-gray-300">Platform Usage</span>
               <span className="text-white font-semibold">
-                {getProgressPercentage(stats.schoolsExplored, stats.totalSchools)}%
+                {stats.activeDays} days
               </span>
             </div>
           </div>
@@ -230,8 +275,8 @@ export function StudentStats() {
               <div className="text-gray-300 text-sm">Messages Posted</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-400 mb-1">{stats.activeDays}</div>
-              <div className="text-gray-300 text-sm">Active Days</div>
+              <div className="text-3xl font-bold text-blue-400 mb-1">{stats.totalLogins}</div>
+              <div className="text-gray-300 text-sm">Total Logins</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-green-400 mb-1">
@@ -259,15 +304,15 @@ export function StudentStats() {
             </p>
           </div>
 
-          <div className={`p-4 rounded-lg border ${stats.weeksViewed >= 3 ? 'bg-purple-500/20 border-purple-400/50' : 'bg-gray-500/20 border-gray-400/50'}`}>
+          <div className={`p-4 rounded-lg border ${stats.resourcesViewed >= 5 ? 'bg-purple-500/20 border-purple-400/50' : 'bg-gray-500/20 border-gray-400/50'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <CalendarDaysIcon className={`w-5 h-5 ${stats.weeksViewed >= 3 ? 'text-purple-400' : 'text-gray-400'}`} />
-              <span className={`font-medium ${stats.weeksViewed >= 3 ? 'text-purple-300' : 'text-gray-300'}`}>
+              <BookOpenIcon className={`w-5 h-5 ${stats.resourcesViewed >= 5 ? 'text-purple-400' : 'text-gray-400'}`} />
+              <span className={`font-medium ${stats.resourcesViewed >= 5 ? 'text-purple-300' : 'text-gray-300'}`}>
                 Explorer
               </span>
             </div>
-            <p className={`text-sm ${stats.weeksViewed >= 3 ? 'text-purple-200' : 'text-gray-400'}`}>
-              {stats.weeksViewed >= 3 ? 'Explored 3+ weeks of content!' : `View ${3 - stats.weeksViewed} more weeks`}
+            <p className={`text-sm ${stats.resourcesViewed >= 5 ? 'text-purple-200' : 'text-gray-400'}`}>
+              {stats.resourcesViewed >= 5 ? 'Viewed 5+ resources!' : `View ${5 - stats.resourcesViewed} more resources`}
             </p>
           </div>
 

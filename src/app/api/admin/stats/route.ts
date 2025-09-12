@@ -82,13 +82,17 @@ export async function GET(request: NextRequest) {
       totalVisits = 0; // Fallback if table doesn't exist
     }
 
-    // Get students in groups count
+    // Get unique students in groups count
     let studentsInGroups = 0;
     try {
-      const { count } = await supabaseAdmin
+      const { data: uniqueStudents } = await supabaseAdmin
         .from('group_members')
-        .select('user_id', { count: 'exact', head: true });
-      studentsInGroups = count || 0;
+        .select('user_id');
+      
+      if (uniqueStudents) {
+        const uniqueUserIds = new Set(uniqueStudents.map(member => member.user_id));
+        studentsInGroups = uniqueUserIds.size;
+      }
     } catch {
       studentsInGroups = 0; // Fallback if table doesn't exist
     }
@@ -104,7 +108,13 @@ export async function GET(request: NextRequest) {
       studentsInGroups: studentsInGroups
     };
 
-    return NextResponse.json(stats);
+    return NextResponse.json(stats, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, max-age=0, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
     return NextResponse.json(

@@ -33,13 +33,22 @@ export function AdminStats() {
     studentsInGroups: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
+    
+    // Auto-refresh stats every 5 minutes
+    const interval = setInterval(fetchStats, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
     try {
+      setIsLoading(true);
+      setError(null);
+      
       const { getAuthenticatedHeaders } = await import('@/lib/api');
       const headers = await getAuthenticatedHeaders();
       
@@ -50,10 +59,16 @@ export function AdminStats() {
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+        setError(null);
       } else {
-        console.error('Failed to fetch admin stats:', response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        setError(errorMessage);
+        console.error('Failed to fetch admin stats:', errorMessage);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(errorMessage);
       console.error('Error fetching stats:', error);
     } finally {
       setIsLoading(false);
@@ -104,6 +119,27 @@ export function AdminStats() {
               <div className="h-3 bg-glass rounded w-32"></div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold text-white">Platform Statistics</h2>
+          <button
+            onClick={fetchStats}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-400/50 rounded-lg text-red-400 transition-all duration-300"
+          >
+            <ChartBarIcon className="w-4 h-4" />
+            Retry
+          </button>
+        </div>
+        <div className="bg-red-500/20 border border-red-400/50 rounded-xl p-6 text-center">
+          <div className="text-red-400 font-medium mb-2">Failed to load statistics</div>
+          <div className="text-red-300 text-sm">{error}</div>
         </div>
       </div>
     );
