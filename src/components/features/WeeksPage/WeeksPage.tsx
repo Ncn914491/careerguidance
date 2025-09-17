@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Modal from '@/components/ui/Modal';
 import FileViewer from '@/components/ui/FileViewer';
+import { FormattedText } from '@/components/ui/FormattedText';
 import { authenticatedFetch, handleApiResponse } from '@/lib/api-client';
-import { PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlayIcon, PauseIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 interface WeekFile {
   id: string;
@@ -215,14 +216,7 @@ function WeekModal({ week, isOpen, onClose }: WeekModalProps) {
       size="xl"
     >
       <div className="space-y-6">
-        {/* Description */}
-        {week.description && (
-          <div className="bg-gray-800/50 rounded-lg p-4">
-            <p className="text-gray-300 leading-relaxed">{week.description}</p>
-          </div>
-        )}
-        
-        {/* File Type Tabs */}
+        {/* MEDIA CONTENT FIRST - File Type Tabs */}
         <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-lg">
           {photos.length > 0 && (
             <button
@@ -396,6 +390,38 @@ function WeekModal({ week, isOpen, onClose }: WeekModalProps) {
             ))}
           </div>
         )}
+        
+        {/* TEXT CONTENT SECTION - DISPLAYED AFTER MEDIA */}
+        {week.description && (
+          <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700/50 mt-6">
+            <div className="flex items-start gap-3">
+              <DocumentTextIcon className="w-6 h-6 text-purple-400 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-white mb-4">
+                  Week {week.week_number} - Detailed Summary
+                </h4>
+                <div className="bg-glass-light rounded-lg p-4 border border-glass">
+                  <FormattedText 
+                    text={week.description} 
+                    className="text-gray-300 leading-relaxed"
+                    paragraphs={true}
+                    maxLength={1000}
+                    expandable={true}
+                  />
+                  <div className="mt-4 pt-3 border-t border-glass">
+                    <p className="text-xs text-gray-400">
+                      Published on {new Date(week.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Enhanced PDF Modal */}
@@ -560,15 +586,7 @@ function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps
           </div>
         )}
         
-        {/* Description */}
-        {week.description && (
-          <div className="bg-gray-800/50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-white mb-2">Description</h3>
-            <p className="text-gray-300 leading-relaxed">{week.description}</p>
-          </div>
-        )}
-        
-        {/* PDF Viewer */}
+        {/* PDF Viewer - MOVED TO DISPLAY BEFORE TEXT */}
         {pdfs.length > 0 && (
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Documents</h3>
@@ -603,6 +621,25 @@ function WeekCard({ week, isAdmin, onEdit, onDelete, isDeleting }: WeekCardProps
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        
+        {/* TEXT CONTENT SECTION - DISPLAYED AFTER MEDIA */}
+        {week.description && (
+          <div className="bg-gray-800/30 rounded-lg p-4 mt-6">
+            <div className="flex items-start gap-3">
+              <DocumentTextIcon className="w-5 h-5 text-purple-400 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-3">Week Summary</h3>
+                <FormattedText 
+                  text={week.description} 
+                  className="text-gray-300 leading-relaxed"
+                  paragraphs={true}
+                  maxLength={800}
+                  expandable={true}
+                />
+              </div>
             </div>
           </div>
         )}

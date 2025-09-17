@@ -8,9 +8,11 @@ import {
   PlayIcon,
   EyeIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import FileViewer from '@/components/ui/FileViewer';
+import { FormattedText } from '@/components/ui/FormattedText';
 
 interface WeekFile {
   id: string;
@@ -61,18 +63,6 @@ export function ViewWeeksData() {
     setExpandedWeek(expandedWeek === weekId ? null : weekId);
   };
 
-  const getFileIcon = (fileType: string) => {
-    switch (fileType) {
-      case 'photo':
-        return <PhotoIcon className="w-5 h-5 text-blue-400" />;
-      case 'video':
-        return <PlayIcon className="w-5 h-5 text-green-400" />;
-      case 'pdf':
-        return <DocumentIcon className="w-5 h-5 text-red-400" />;
-      default:
-        return <DocumentIcon className="w-5 h-5 text-gray-400" />;
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -109,7 +99,10 @@ export function ViewWeeksData() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-white mb-2">Weekly Activities</h2>
-        <p className="text-gray-300">Explore weekly content including photos, videos, and educational materials.</p>
+        <p className="text-gray-300">
+          Explore weekly content including photos, videos, and educational materials. 
+          <span className="text-blue-300">Media content is now displayed above text for better visual hierarchy.</span>
+        </p>
       </div>
 
       {weeks.length === 0 ? (
@@ -139,7 +132,12 @@ export function ViewWeeksData() {
                           Week {week.week_number}: {week.title}
                         </h3>
                       </div>
-                      <p className="text-gray-300 mb-3">{week.description}</p>
+                      {/* Show preview of description only when collapsed */}
+                      {!isExpanded && week.description && (
+                        <p className="text-gray-300 mb-3 line-clamp-2">
+                          {week.description}
+                        </p>
+                      )}
                       <div className="flex items-center gap-6 text-sm text-gray-400">
                         <span>Published {new Date(week.created_at).toLocaleDateString()}</span>
                         <div className="flex items-center gap-4">
@@ -174,9 +172,10 @@ export function ViewWeeksData() {
                   </div>
                 </div>
 
-                {/* Week Content */}
+                {/* Week Content - MEDIA FIRST, THEN TEXT */}
                 {isExpanded && (
                   <div className="border-t border-glass p-6 space-y-6">
+                    {/* MEDIA SECTIONS - DISPLAYED FIRST */}
                     {/* Photos Section */}
                     {photos.length > 0 && (
                       <div>
@@ -260,6 +259,43 @@ export function ViewWeeksData() {
                         </div>
                       </div>
                     )}
+                    
+                    {/* TEXT CONTENT SECTION - DISPLAYED BELOW MEDIA */}
+                    {(week.title || week.description) && (
+                      <div className="bg-gray-800/20 rounded-xl p-6 border border-gray-700/30 mt-6">
+                        <div className="flex items-start gap-3">
+                          <DocumentTextIcon className="w-6 h-6 text-purple-400 mt-1 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h4 className="text-lg font-semibold text-white mb-2">
+                              Week {week.week_number} Content
+                            </h4>
+                            <div className="bg-glass-light rounded-lg p-4 border border-glass">
+                              <h5 className="text-white font-medium mb-3">{week.title}</h5>
+                              {week.description ? (
+                                <FormattedText 
+                                  text={week.description} 
+                                  className="text-gray-300 leading-relaxed"
+                                  paragraphs={true}
+                                  maxLength={500}
+                                  expandable={true}
+                                />
+                              ) : (
+                                <p className="text-gray-400 italic">No description available</p>
+                              )}
+                              <div className="mt-4 pt-3 border-t border-glass">
+                                <p className="text-xs text-gray-400">
+                                  Published on {new Date(week.created_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -274,6 +310,41 @@ export function ViewWeeksData() {
           file={selectedFile}
           onClose={() => setSelectedFile(null)}
         />
+      )}
+
+      {/* Information Panel */}
+      {weeks.length > 0 && (
+        <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-6 mt-8">
+          <h3 className="text-lg font-semibold text-green-200 mb-3">
+            📋 What&apos;s New in This Update
+          </h3>
+          <ul className="space-y-2 text-green-100 text-sm">
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-0.5">✓</span>
+              <span>
+                <strong>Improved Display Order:</strong> Media files (photos, videos, PDFs) now appear above text content for better visual hierarchy
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-0.5">✓</span>
+              <span>
+                <strong>Enhanced Text Formatting:</strong> Text content now preserves line breaks, paragraphs, and proper spacing
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-0.5">✓</span>
+              <span>
+                <strong>Expandable Text:</strong> Long descriptions can be expanded/collapsed with &quot;read more&quot; functionality
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-400 mt-0.5">✓</span>
+              <span>
+                <strong>Better Mobile Experience:</strong> Responsive design that works well on all devices
+              </span>
+            </li>
+          </ul>
+        </div>
       )}
     </div>
   );

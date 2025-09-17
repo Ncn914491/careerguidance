@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
 
 // Use admin client to bypass RLS issues
 const supabaseAdmin = createClient(
@@ -14,7 +13,7 @@ const supabaseAdmin = createClient(
   }
 );
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // Weeks are publicly accessible - no authentication required
     // Use admin client to bypass RLS issues until policies are fixed

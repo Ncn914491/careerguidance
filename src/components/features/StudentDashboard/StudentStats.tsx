@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { 
   UserGroupIcon, 
   CalendarDaysIcon, 
-  AcademicCapIcon,
   ChatBubbleLeftRightIcon,
   BookOpenIcon,
   EyeIcon

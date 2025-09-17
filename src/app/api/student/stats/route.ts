@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
       groupsJoined = count || 0;
-    } catch (error) {
+    } catch {
       groupsJoined = 0;
     }
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
       messagesPosted = count || 0;
-    } catch (error) {
+    } catch {
       // If messages table doesn't exist or error occurs, simulate based on engagement
       messagesPosted = groupsJoined * 5; // Assume 5 messages per group joined
     }
