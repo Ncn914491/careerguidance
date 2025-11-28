@@ -71,9 +71,9 @@ export default function GroupChatArea({ group, currentUserId }: GroupChatAreaPro
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-glass backdrop-blur-md">
+    <div className="flex-1 flex flex-col bg-glass backdrop-blur-md h-full overflow-hidden">
       {/* Chat Header */}
-      <div className="p-4 border-b border-glass bg-glass-dark">
+      <div className="flex-shrink-0 p-4 border-b border-glass bg-glass-dark">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
@@ -109,9 +109,10 @@ export default function GroupChatArea({ group, currentUserId }: GroupChatAreaPro
         )}
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0">
+      {/* Messages Area - Fixed height container */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Scrollable messages container */}
+        <div className="flex-1 min-h-0 overflow-hidden">
           <MessageList
             messages={messages}
             loading={messagesLoading}
@@ -119,8 +120,8 @@ export default function GroupChatArea({ group, currentUserId }: GroupChatAreaPro
           />
         </div>
 
-        {/* Message Input */}
-        <div className="flex-shrink-0 p-4 border-t border-glass">
+        {/* Message Input - Fixed at bottom */}
+        <div className="flex-shrink-0 border-t border-glass bg-glass-dark">
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={!currentUserId}

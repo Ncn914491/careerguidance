@@ -122,7 +122,7 @@ export default function GroupsPage() {
   const selectedGroup: Group | null = selectedGroupId ? groups.find(g => g.id === selectedGroupId) || null : null
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex bg-glass backdrop-blur-md rounded-xl border border-glass shadow-glass overflow-hidden">
+    <div className="h-[calc(100vh-8rem)] flex bg-glass backdrop-blur-md rounded-xl border border-glass shadow-glass overflow-hidden" style={{ minHeight: '500px' }}>
       {/* Sidebar */}
       <GroupsSidebar
         groups={groups}

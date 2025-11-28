@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "setup": "node scripts/setup-system.js",
+    "reset-admin": "node scripts/reset-admin-password.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

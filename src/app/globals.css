@@ -188,3 +188,46 @@ button:disabled {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
+
+/* Chat area specific styles */
+.chat-messages-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* Prevent layout shifts in flex containers */
+.chat-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Message bubble animations */
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble {
+  animation: messageSlideIn 0.2s ease-out;
+}
+
+/* Smooth scroll for chat */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Touch-friendly scrolling */
+@media (pointer: coarse) {
+  .chat-messages-container {
+    scroll-snap-type: y proximity;
+  }
+}

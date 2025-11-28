@@ -205,7 +205,7 @@ export default function GroupsSidebar({
       )}
 
       {/* Groups List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto chat-messages-container">
         {/* Joined Groups */}
         {joinedGroups.length > 0 && (
           <div className="p-4">
